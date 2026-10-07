@@ -3,211 +3,247 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-  <meta name="description" content="Amaz Games — a friendly collection of fun, safe games for kids." />
-  <meta name="theme-color" content="#6a4bd6" />
+  <meta name="description" content="Amal's Games — a cool collection of fun, safe games made for Amal." />
+  <meta name="theme-color" content="#1a0b3d" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="apple-mobile-web-app-title" content="Amaz Games" />
+  <meta name="apple-mobile-web-app-title" content="Amal's Games" />
   <link rel="apple-touch-icon" href="./animal-spot/icons/icon-192.png" />
-  <title>Amaz Games</title>
+  <title>Amal's Games</title>
   <style>
     :root {
-      --bg1: #6a4bd6;
-      --bg2: #8a5fe6;
-      --bg3: #b07bf0;
-      --sun: #ffca3a;
-      --coral: #ff7b8a;
-      --mint: #3fd6a0;
-      --cream: #fff6ea;
-      --ink: #2c2140;
-      --card: #ffffff;
-      --shadow: 0 10px 0 rgba(40, 20, 80, 0.18), 0 20px 40px rgba(40, 20, 80, 0.25);
+      --bg1: #120a2e; --bg2: #2a1468; --bg3: #0b3b5e;
+      --ink: #ffffff; --muted: #b9b4e3;
+      --sun: #ffd23f; --coral: #ff5d8f; --mint: #3fe0a8; --sky: #4cc9f0; --violet: #9b5cff; --orange: #ff9f1c;
+      --card: rgba(255,255,255,0.08);
+      --edge: rgba(255,255,255,0.16);
+      --shadow: 0 16px 40px rgba(0,0,0,0.35);
     }
     * { box-sizing: border-box; margin: 0; padding: 0; }
     html, body { min-height: 100%; }
     body {
-      font-family: "SF Pro Rounded", ui-rounded, "Hiragino Maru Gothic ProN", Quicksand,
-        Comfortaa, "Comic Sans MS", "Segoe UI", system-ui, sans-serif;
+      font-family: "SF Pro Rounded", ui-rounded, "Hiragino Maru Gothic ProN", "Segoe UI", system-ui, sans-serif;
       color: var(--ink);
-      background: radial-gradient(circle at 50% 0%, var(--bg3), var(--bg2) 45%, var(--bg1) 100%);
+      background: radial-gradient(120% 90% at 20% 0%, var(--bg2), transparent 60%),
+                  radial-gradient(90% 80% at 100% 100%, var(--bg3), transparent 60%),
+                  var(--bg1);
       background-attachment: fixed;
-      min-height: 100vh;
-      overflow-x: hidden;
+      min-height: 100vh; overflow-x: hidden;
       -webkit-tap-highlight-color: transparent;
     }
 
-    /* floating background bubbles */
-    .bg-deco { position: fixed; inset: 0; pointer-events: none; overflow: hidden; z-index: 0; }
-    .bubble { position: absolute; font-size: 3rem; opacity: 0.35; animation: floaty 9s ease-in-out infinite; }
-    @keyframes floaty { 0%, 100% { transform: translateY(0) rotate(-4deg); } 50% { transform: translateY(-26px) rotate(4deg); } }
+    /* ---------- floating background ---------- */
+    .bg { position: fixed; inset: 0; pointer-events: none; overflow: hidden; z-index: 0; }
+    .star { position: absolute; width: 3px; height: 3px; border-radius: 50%; background: #fff; opacity: .5; animation: twinkle 3s ease-in-out infinite; }
+    @keyframes twinkle { 50% { opacity: 1; transform: scale(1.6); } }
+    .orb { position: absolute; border-radius: 50%; filter: blur(60px); opacity: .45; animation: drift 14s ease-in-out infinite alternate; }
+    @keyframes drift { to { transform: translate(40px, -30px) scale(1.1); } }
+    .floaty { position: absolute; font-size: 2.4rem; opacity: .55; animation: bob 7s ease-in-out infinite; filter: drop-shadow(0 6px 10px rgba(0,0,0,.4)); }
+    @keyframes bob { 0%,100% { transform: translateY(0) rotate(-6deg); } 50% { transform: translateY(-22px) rotate(6deg); } }
 
-    .wrap { position: relative; z-index: 1; max-width: 1000px; margin: 0 auto; padding: clamp(20px, 5vw, 48px) 20px 60px; }
+    .wrap { position: relative; z-index: 1; max-width: 1180px; margin: 0 auto; padding: clamp(18px, 4vw, 44px) 20px 70px; }
 
-    header.hero { text-align: center; padding: 20px 0 34px; }
-    .logo-badge {
-      display: inline-flex; align-items: center; gap: 14px;
-      background: rgba(255, 255, 255, 0.16);
-      border: 3px solid rgba(255, 255, 255, 0.4);
-      padding: 12px 26px; border-radius: 999px;
-      backdrop-filter: blur(6px);
-      margin-bottom: 22px;
-    }
-    .logo-badge .spark { font-size: 2rem; animation: pop 2.4s ease-in-out infinite; }
-    @keyframes pop { 0%, 100% { transform: scale(1) rotate(0); } 50% { transform: scale(1.2) rotate(12deg); } }
-    .logo-badge span { color: #fff; font-weight: 800; letter-spacing: 0.16em; font-size: 0.95rem; text-transform: uppercase; }
+    /* ---------- hero ---------- */
+    .hero { text-align: center; padding: 10px 0 30px; }
+    .badge { display: inline-flex; gap: 10px; align-items: center; padding: 10px 20px; border-radius: 999px;
+      background: rgba(255,255,255,.1); border: 2px solid var(--edge); font-weight: 800; letter-spacing: .14em; font-size: .85rem; text-transform: uppercase; color: #e9e4ff; }
+    .badge .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--mint); box-shadow: 0 0 12px var(--mint); animation: twinkle 1.6s infinite; }
+    h1 { margin-top: 18px; font-size: clamp(3rem, 12vw, 6.6rem); line-height: .95; font-weight: 900; letter-spacing: .01em; }
+    h1 .a { background: linear-gradient(90deg, var(--sun), var(--coral)); -webkit-background-clip: text; background-clip: text; color: transparent; filter: drop-shadow(0 6px 0 rgba(0,0,0,.35)); }
+    h1 .g { color: #fff; text-shadow: 0 6px 0 #3a1c8a, 0 16px 30px rgba(0,0,0,.4); }
+    .tag { margin-top: 14px; color: var(--muted); font-weight: 700; font-size: clamp(1rem, 3.4vw, 1.3rem); }
+    .hero-art { margin: 26px auto 0; max-width: 980px; border-radius: 30px; overflow: hidden; border: 3px solid var(--edge); box-shadow: var(--shadow), 0 0 60px rgba(155,92,255,.35); }
+    .hero-art img { display: block; width: 100%; height: auto; }
+    .avatar-row { display: flex; justify-content: center; gap: 8px; margin-top: 22px; flex-wrap: wrap; }
+    .avatar-row span { font-size: 2rem; width: 58px; height: 58px; display: grid; place-items: center; border-radius: 18px; background: rgba(255,255,255,.1); border: 2px solid var(--edge); animation: bob 5s ease-in-out infinite; }
+    .avatar-row span:nth-child(2n) { animation-delay: .6s; } .avatar-row span:nth-child(3n) { animation-delay: 1.2s; }
 
-    h1 {
-      font-size: clamp(3rem, 13vw, 6rem);
-      line-height: 0.92;
-      color: #fff;
-      text-shadow: 0 5px 0 #4a2fa8, 0 14px 26px rgba(20, 10, 50, 0.4);
-      letter-spacing: 0.01em;
-    }
-    h1 .amaz { color: var(--sun); text-shadow: 0 5px 0 #c98a00, 0 14px 26px rgba(20, 10, 50, 0.4); }
-    .tagline {
-      margin-top: 18px; color: #fff; font-weight: 700;
-      font-size: clamp(1.1rem, 4vw, 1.5rem);
-      opacity: 0.95;
-    }
+    /* ---------- filter chips ---------- */
+    .chips { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; margin: 10px 0 26px; }
+    .chip { padding: 10px 18px; border-radius: 999px; font-weight: 800; background: rgba(255,255,255,.08); border: 2px solid var(--edge); color: #e9e4ff; cursor: pointer; font-size: .95rem; transition: transform .15s, background .15s; font-family: inherit; }
+    .chip:hover { transform: translateY(-2px); }
+    .chip.on { background: #fff; color: #2a1468; border-color: #fff; }
 
-    .section-label {
-      display: flex; align-items: center; gap: 12px;
-      color: #fff; font-weight: 800; font-size: 1.2rem;
-      margin: 10px 4px 18px; text-transform: uppercase; letter-spacing: 0.08em;
-    }
-    .section-label::after { content: ""; flex: 1; height: 3px; border-radius: 3px; background: rgba(255,255,255,0.3); }
+    /* ---------- game grid ---------- */
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); gap: 22px; }
+    .game { position: relative; display: flex; flex-direction: column; border-radius: 28px; overflow: hidden; text-decoration: none; color: inherit;
+      background: var(--card); border: 2px solid var(--edge); box-shadow: var(--shadow); transition: transform .18s ease, box-shadow .18s ease, border-color .18s; }
+    .game:hover, .game:focus-visible { transform: translateY(-8px) scale(1.01); border-color: rgba(255,255,255,.4); box-shadow: 0 26px 60px rgba(0,0,0,.5); outline: none; }
+    .game.hidden { display: none; }
+    .art { position: relative; height: 190px; overflow: hidden; display: grid; place-items: center; }
+    .art .big { font-size: 5rem; z-index: 2; filter: drop-shadow(0 10px 14px rgba(0,0,0,.4)); transition: transform .25s; }
+    .game:hover .art .big { transform: scale(1.12) rotate(-4deg); }
+    .art .mini { position: absolute; font-size: 2rem; opacity: .9; filter: drop-shadow(0 4px 6px rgba(0,0,0,.35)); animation: bob 6s ease-in-out infinite; }
+    .m1 { top: 14px; left: 18px; } .m2 { top: 22px; right: 22px; animation-delay: .8s !important; } .m3 { bottom: 16px; left: 36px; animation-delay: 1.6s !important; } .m4 { bottom: 18px; right: 30px; animation-delay: 2.4s !important; }
+    .art .racer { position: absolute; bottom: -6px; width: 112px; height: 112px; object-fit: cover; border-radius: 50% 50% 0 0; filter: drop-shadow(0 8px 12px rgba(0,0,0,.45)); transition: transform .25s; }
+    .art .r1 { left: 8px; } .art .r2 { left: 50%; transform: translateX(-50%) scale(1.1); z-index: 1; } .art .r3 { right: 8px; }
+    .game:hover .art .r1 { transform: translateY(-6px) rotate(-4deg); } .game:hover .art .r3 { transform: translateY(-6px) rotate(4deg); }
+    .art.turbo .big { position: absolute; bottom: 10px; right: 46%; font-size: 2.6rem; display: none; }
+    .pill { position: absolute; top: 14px; left: 50%; transform: translateX(-50%); padding: 6px 14px; border-radius: 999px; font-size: .75rem; font-weight: 900; letter-spacing: .08em; text-transform: uppercase; background: rgba(0,0,0,.55); color: #fff; z-index: 3; }
+    .body { padding: 18px 20px 20px; display: flex; flex-direction: column; gap: 10px; flex: 1; }
+    .title { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+    .title h2 { font-size: 1.45rem; font-weight: 900; }
+    .age { font-size: .72rem; font-weight: 900; padding: 5px 10px; border-radius: 999px; background: rgba(255,255,255,.12); color: #e9e4ff; white-space: nowrap; }
+    .desc { color: var(--muted); font-size: .98rem; line-height: 1.45; }
+    .how { display: flex; flex-wrap: wrap; gap: 6px; }
+    .how span { font-size: .78rem; font-weight: 800; padding: 5px 10px; border-radius: 10px; background: rgba(0,0,0,.25); color: #e9e4ff; }
+    .cta { margin-top: auto; display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+    .play { font-weight: 900; font-size: 1.05rem; padding: 12px 24px; border-radius: 999px; color: #2a1468; background: linear-gradient(180deg, #ffe066, #ffb703); box-shadow: 0 6px 0 #c98a00; }
+    .game:hover .play { filter: brightness(1.06); }
+    .meta { font-size: .8rem; color: var(--muted); font-weight: 700; }
 
-    .games-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 22px; }
+    /* per-game art backgrounds */
+    .art.spot   { background: linear-gradient(160deg, #a9e4ff, #c8f5b8 55%, #6fcf7a); }
+    .art.turbo  { background: linear-gradient(160deg, #1a0e3a, #4a1680 50%, #ff2fb0); }
+    .art.blitz  { background: linear-gradient(160deg, #0f2a6b, #1b4bd1 55%, #4cc9f0); }
+    .art.bubble { background: linear-gradient(160deg, #063d4e, #0b7a8c 55%, #3fe0a8); }
+    .art.world  { background: linear-gradient(160deg, #ff9f1c, #ff5d8f 55%, #9b5cff); }
 
-    .game-card {
-      display: flex; flex-direction: column;
-      background: var(--card); border-radius: 28px;
-      box-shadow: var(--shadow);
-      overflow: hidden; text-decoration: none; color: inherit;
-      transition: transform 0.16s ease;
-    }
-    .game-card.playable:hover { transform: translateY(-6px); }
-    .game-card.playable:active { transform: translateY(-2px) scale(0.99); }
+    /* ---------- how it works strip ---------- */
+    .strip { margin-top: 44px; display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; }
+    .tip { background: rgba(255,255,255,.07); border: 2px solid var(--edge); border-radius: 20px; padding: 16px 18px; display: flex; gap: 12px; align-items: center; }
+    .tip .ico { font-size: 1.9rem; }
+    .tip b { display: block; font-size: 1rem; } .tip small { color: var(--muted); font-weight: 600; }
 
-    .card-art {
-      position: relative; height: 168px;
-      display: grid; place-items: center;
-      overflow: hidden;
-    }
-    .card-art.animal { background: linear-gradient(160deg, #aee3f7 0%, #d3f1c0 55%, #7ec97b 100%); }
-    .card-art .hero-emoji { font-size: 5rem; filter: drop-shadow(0 6px 8px rgba(0,0,0,0.2)); z-index: 2; }
-    .card-art .mini { position: absolute; font-size: 2.1rem; opacity: 0.9; }
-    .card-art .m1 { top: 16px; left: 20px; transform: rotate(-8deg); }
-    .card-art .m2 { top: 22px; right: 24px; transform: rotate(10deg); }
-    .card-art .m3 { bottom: 16px; left: 30px; transform: rotate(6deg); }
-    .card-art .m4 { bottom: 20px; right: 28px; transform: rotate(-10deg); }
+    footer { text-align: center; color: var(--muted); margin-top: 44px; font-weight: 700; line-height: 1.7; font-size: .95rem; }
+    footer b { color: #fff; }
 
-    .card-body { padding: 18px 20px 22px; display: flex; flex-direction: column; gap: 8px; flex: 1; }
-    .card-title-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
-    .card-title { font-size: 1.5rem; font-weight: 900; }
-    .tag {
-      font-size: 0.72rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.06em;
-      padding: 5px 10px; border-radius: 999px; white-space: nowrap;
-    }
-    .tag.live { background: #e3f9ee; color: #12805a; }
-    .tag.soon { background: #f0ecff; color: #6a4bd6; }
-    .card-desc { font-size: 0.98rem; line-height: 1.4; opacity: 0.75; }
-    .play-cta {
-      margin-top: auto; align-self: flex-start;
-      background: linear-gradient(180deg, #ffd95e, #ffb703);
-      color: #5c4200; font-weight: 900; font-size: 1.1rem;
-      padding: 12px 26px; border-radius: 999px;
-      box-shadow: 0 5px 0 #d99400;
-    }
-
-    .game-card.soon-card { opacity: 0.92; }
-    .soon-card .card-art { background: linear-gradient(160deg, #d9ccf5, #c0a8ee); }
-    .soon-card .card-art .hero-emoji { filter: grayscale(0.2) drop-shadow(0 6px 8px rgba(0,0,0,0.15)); }
-    .soon-note { margin-top: auto; font-weight: 800; color: #6a4bd6; }
-
-    footer { text-align: center; color: #fff; opacity: 0.85; margin-top: 44px; font-size: 0.95rem; line-height: 1.6; }
-    footer strong { font-weight: 800; }
-
-    @media (prefers-reduced-motion: reduce) {
-      .bubble, .logo-badge .spark { animation: none; }
-    }
+    @media (prefers-reduced-motion: reduce) { .star, .orb, .floaty, .avatar-row span, .art .mini, .badge .dot { animation: none; } }
   </style>
 </head>
 <body>
-  <div class="bg-deco" aria-hidden="true">
-    <span class="bubble" style="top:8%; left:6%; animation-delay:0s">🐾</span>
-    <span class="bubble" style="top:18%; right:8%; animation-delay:1.2s">⭐</span>
-    <span class="bubble" style="top:60%; left:4%; animation-delay:2.1s">🎈</span>
-    <span class="bubble" style="top:72%; right:6%; animation-delay:0.6s">🦋</span>
-    <span class="bubble" style="top:40%; left:48%; animation-delay:1.8s">✨</span>
+  <div class="bg" aria-hidden="true">
+    <div class="orb" style="width:420px;height:420px;background:#9b5cff;top:-120px;left:-120px"></div>
+    <div class="orb" style="width:460px;height:460px;background:#3fe0a8;bottom:-160px;right:-140px;animation-delay:3s"></div>
+    <div class="orb" style="width:320px;height:320px;background:#ff5d8f;top:40%;left:60%;animation-delay:6s"></div>
+    <span class="floaty" style="top:12%;left:5%">🎮</span>
+    <span class="floaty" style="top:28%;right:6%;animation-delay:1s">⭐</span>
+    <span class="floaty" style="top:62%;left:4%;animation-delay:2s">🚀</span>
+    <span class="floaty" style="top:76%;right:5%;animation-delay:3s">🎯</span>
+    <span class="floaty" style="top:48%;left:48%;animation-delay:4s;font-size:1.6rem">✨</span>
   </div>
 
   <div class="wrap">
     <header class="hero">
-      <div class="logo-badge">
-        <span class="spark">🎮</span>
-        <span>Fun &amp; Safe Games</span>
-      </div>
-      <h1><span class="amaz">Amaz</span> Games</h1>
-      <p class="tagline">Pick a game and start playing!</p>
+      <div class="badge"><span class="dot"></span> Amal's own game arcade</div>
+      <h1><span class="a">Amal's</span> <span class="g">Games</span></h1>
+      <p class="tag">Pick a game, beat your best score, collect the stars ⭐</p>
+      <div class="hero-art"><img src="./assets/hero.jpg" alt="Amal's Games characters cheering" loading="eager" /></div>
     </header>
 
-    <div class="section-label">🎯 Games</div>
-    <main class="games-grid">
-      <a class="game-card playable" href="./animal-spot/index.html" aria-label="Play Animal Spot">
-        <div class="card-art animal">
-          <span class="mini m1">🦁</span>
-          <span class="mini m2">🐧</span>
-          <span class="mini m3">🐸</span>
-          <span class="mini m4">🦊</span>
-          <span class="hero-emoji">🔍</span>
+    <nav class="chips" aria-label="Filter games">
+      <button class="chip on" data-f="all">✨ All games</button>
+      <button class="chip" data-f="brain">🧠 Brain</button>
+      <button class="chip" data-f="racing">🏁 Racing</button>
+      <button class="chip" data-f="puzzle">🧩 Puzzle</button>
+      <button class="chip" data-f="adventure">🗺️ Adventure</button>
+    </nav>
+
+    <main class="grid" id="grid">
+
+      <a class="game" href="./amal-turbo/index.html" data-type="racing" aria-label="Play Amal Turbo">
+        <div class="art turbo">
+          <span class="pill">3D Racing</span>
+          <img class="racer r1" src="./amal-turbo/racers/leo.png" alt="" />
+          <img class="racer r2" src="./amal-turbo/racers/kiki.png" alt="" />
+          <img class="racer r3" src="./amal-turbo/racers/shadow.png" alt="" />
+          <span class="big">🏎️</span>
         </div>
-        <div class="card-body">
-          <div class="card-title-row">
-            <span class="card-title">Animal Spot!</span>
-            <span class="tag live">▶ Play now</span>
-          </div>
-          <p class="card-desc">Find the hidden animal! Explore 7 worlds, spot 65 animals and fill your Animal Book.</p>
-          <span class="play-cta">Play ▶</span>
+        <div class="body">
+          <div class="title"><h2>Amal Turbo</h2><span class="age">Ages 8+</span></div>
+          <p class="desc">Full 3D kart racing! Drift round corners for turbo boosts, grab power-ups and race 12 animal champions across candy, ocean, space and neon worlds.</p>
+          <div class="how"><span>🎮 Arrows / touch to steer</span><span>💨 Hold drift to boost</span><span>🏆 Win cups</span></div>
+          <div class="cta"><span class="play">Race ▶</span><span class="meta">8 tracks · 4 modes</span></div>
         </div>
       </a>
 
-      <a class="game-card playable" href="./amal-turbo/index.html" aria-label="Play Amal Turbo">
-        <div class="card-art" style="background:linear-gradient(160deg,#1a0e3a 0%,#3a1060 45%,#5a1030 100%)">
-          <span class="mini m1" style="filter:drop-shadow(0 0 6px #00e5ff)">🏎️</span>
-          <span class="mini m2" style="filter:drop-shadow(0 0 6px #ff2fb0)">🦁</span>
-          <span class="mini m3" style="filter:drop-shadow(0 0 6px #ffd23f)">🐆</span>
-          <span class="mini m4" style="filter:drop-shadow(0 0 6px #7b2ff7)">🐬</span>
-          <span class="hero-emoji" style="filter:drop-shadow(0 4px 10px #ff2fb0)">🏁</span>
+      <a class="game" href="./animal-spot/index.html" data-type="brain" aria-label="Play Animal Spot">
+        <div class="art spot">
+          <span class="pill">Spot & Memory</span>
+          <span class="mini m1">🦁</span><span class="mini m2">🐧</span><span class="mini m3">🐸</span><span class="mini m4">🦊</span>
+          <span class="big">🔍</span>
         </div>
-        <div class="card-body">
-          <div class="card-title-row">
-            <span class="card-title">Amal Turbo</span>
-            <span class="tag live">▶ Play now</span>
-          </div>
-          <p class="card-desc">A fast 3D animal kart racer! Drift, boost and battle across neon worlds. Best for ages 10+.</p>
-          <span class="play-cta">Race ▶</span>
+        <div class="body">
+          <div class="title"><h2>Animal Spot!</h2><span class="age">Ages 6+</span></div>
+          <p class="desc">Find the hidden animal fast! Race the clock, build streaks, test your memory in Peek &amp; Seek and discover all 65 animals across 7 worlds.</p>
+          <div class="how"><span>👆 Tap the right animal</span><span>⏱️ Beat the timer</span><span>🧠 Memory mode</span></div>
+          <div class="cta"><span class="play">Play ▶</span><span class="meta">65 animals · 4 modes</span></div>
         </div>
       </a>
 
-      <div class="game-card soon-card" aria-label="More games coming soon">
-        <div class="card-art">
-          <span class="hero-emoji">🧩</span>
+      <a class="game" href="./block-blitz/index.html" data-type="puzzle" aria-label="Play Block Blitz">
+        <div class="art blitz">
+          <span class="pill">Classic Puzzle</span>
+          <span class="mini m1">🟦</span><span class="mini m2">🟪</span><span class="mini m3">🟩</span><span class="mini m4">🟨</span>
+          <span class="big">🧩</span>
         </div>
-        <div class="card-body">
-          <div class="card-title-row">
-            <span class="card-title">More games</span>
-            <span class="tag soon">Coming soon</span>
-          </div>
-          <p class="card-desc">New games are on the way. Check back soon for more fun!</p>
-          <span class="soon-note">Coming soon ✨</span>
+        <div class="body">
+          <div class="title"><h2>Block Blitz</h2><span class="age">Ages 7+</span></div>
+          <p class="desc">Stack the falling blocks and clear lines before they reach the top. It gets faster every level — how long can you last?</p>
+          <div class="how"><span>⬅️➡️ Move</span><span>🔄 Rotate</span><span>⬇️ Drop</span></div>
+          <div class="cta"><span class="play">Play ▶</span><span class="meta">Endless · levels</span></div>
         </div>
-      </div>
+      </a>
+
+      <a class="game" href="./bubble-pop/index.html" data-type="puzzle" aria-label="Play Bubble Pop">
+        <div class="art bubble">
+          <span class="pill">Aim & Pop</span>
+          <span class="mini m1">🔵</span><span class="mini m2">🟢</span><span class="mini m3">🟡</span><span class="mini m4">🔴</span>
+          <span class="big">🫧</span>
+        </div>
+        <div class="body">
+          <div class="title"><h2>Bubble Pop</h2><span class="age">Ages 6+</span></div>
+          <p class="desc">Aim, shoot and match 3 bubbles of the same colour to pop them. Bounce shots off the walls and clear the board before it drops!</p>
+          <div class="how"><span>🎯 Drag to aim</span><span>👆 Release to shoot</span><span>💥 Match 3</span></div>
+          <div class="cta"><span class="play">Play ▶</span><span class="meta">Levels · combos</span></div>
+        </div>
+      </a>
+
+      <a class="game" href="./amal-world/index.html" data-type="adventure" aria-label="Play Amal World">
+        <div class="art world">
+          <span class="pill">Platform Adventure</span>
+          <span class="mini m1">🪙</span><span class="mini m2">⭐</span><span class="mini m3">🍄</span><span class="mini m4">🚩</span>
+          <span class="big">🏃</span>
+        </div>
+        <div class="body">
+          <div class="title"><h2>Amal World</h2><span class="age">Ages 7+</span></div>
+          <p class="desc">Run and jump through colourful worlds, bounce on enemies, grab every coin and reach the flag. Earn 3 stars on every level!</p>
+          <div class="how"><span>➡️ Run</span><span>⬆️ Jump (hold = higher)</span><span>⭐ 3-star levels</span></div>
+          <div class="cta"><span class="play">Play ▶</span><span class="meta">6+ levels · stars</span></div>
+        </div>
+      </a>
+
     </main>
 
+    <section class="strip" aria-label="Tips">
+      <div class="tip"><span class="ico">🏠</span><div><b>Always a way home</b><small>Every game has a 🏠 button to bring you back here.</small></div></div>
+      <div class="tip"><span class="ico">💾</span><div><b>Your scores are saved</b><small>Best scores, stars and unlocks stay on this device.</small></div></div>
+      <div class="tip"><span class="ico">📱</span><div><b>Plays anywhere</b><small>iPad, phone or computer — touch or keyboard.</small></div></div>
+      <div class="tip"><span class="ico">🛡️</span><div><b>Safe to play</b><small>No ads, no sign-in, no chat, nothing to buy.</small></div></div>
+    </section>
+
     <footer>
-      <strong>Amaz Games</strong> — made with 💜 for little explorers.<br />
-      No ads · No sign-in · Safe to play.
+      <b>Amal's Games</b> — made with 💜 for Amal.<br />
+      More games are on the way. Got an idea for a new one? Tell Dad! 😄
     </footer>
   </div>
+
+  <script>
+    // filter chips
+    const chips = document.querySelectorAll('.chip');
+    const cards = document.querySelectorAll('.game');
+    chips.forEach((c) => c.addEventListener('click', () => {
+      chips.forEach((x) => x.classList.remove('on')); c.classList.add('on');
+      const f = c.dataset.f;
+      cards.forEach((g) => g.classList.toggle('hidden', f !== 'all' && g.dataset.type !== f));
+    }));
+    // twinkling stars
+    const bg = document.querySelector('.bg');
+    for (let i = 0; i < 70; i++) {
+      const s = document.createElement('span'); s.className = 'star';
+      s.style.left = Math.random() * 100 + '%'; s.style.top = Math.random() * 100 + '%';
+      s.style.animationDelay = (Math.random() * 3) + 's'; s.style.opacity = (0.2 + Math.random() * 0.6).toFixed(2);
+      bg.appendChild(s);
+    }
+  </script>
 </body>
 </html>
