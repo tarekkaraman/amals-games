@@ -34,18 +34,18 @@
   /* ---------- top bar ---------- */
   .topbar {
     flex: 0 0 auto; min-height: var(--topbar-h);
-    display: flex; align-items: center; gap: 8px; padding: 6px 10px;
+    display: flex; align-items: center; gap: 8px; padding: 6px 10px; flex-wrap: wrap;
     background: linear-gradient(180deg, #1b1046, #140b36);
     border-bottom: 1px solid var(--edge); z-index: 10;
     padding-top: calc(6px + env(safe-area-inset-top));
   }
   .home {
-    color: #fff; text-decoration: none; font-weight: 800; font-size: 0.9rem; white-space: nowrap;
+    color: #fff; text-decoration: none; font-weight: 800; font-size: 0.9rem; white-space: nowrap; min-height: 44px; display: inline-flex; align-items: center;
     padding: 8px 12px; border-radius: 999px; background: rgba(255,255,255,.1); border: 1px solid var(--edge);
     transition: background .15s, transform .15s;
   }
   .home:hover { background: rgba(255,255,255,.18); transform: translateY(-1px); }
-  .topbar .arc-chip { padding: 7px 11px; font-size: .85rem; background: rgba(255,255,255,.1); border-color: var(--edge); }
+  .topbar .arc-chip { padding: 7px 11px; font-size: .85rem; background: rgba(255,255,255,.1); border-color: var(--edge); min-height: 44px; }
   .playing { color: var(--muted); font-weight: 700; font-size: .95rem; margin: -10px 0 14px; }
   .playing b { color: #fff; }
   .hud { display: flex; gap: 6px; flex: 1; justify-content: center; align-items: center; flex-wrap: wrap; min-width: 0; }
@@ -59,9 +59,12 @@
   .pill.lives b { color: var(--coral); }
   .pill.timer { color: var(--sky); }
   .pill.timer.good { color: var(--mint); }
-  .topbtns { display: flex; gap: 6px; }
+  .pill b { display: inline-block; }
+  .pill b.pop { animation: statpop .35s ease; }
+  @keyframes statpop { 40% { transform: scale(1.4); } }
+  .topbtns { display: flex; gap: 6px; margin-left: auto; }
   .iconbtn {
-    width: 40px; height: 40px; border-radius: 50%; border: 1px solid var(--edge); color: #fff;
+    width: 44px; height: 44px; border-radius: 50%; border: 1px solid var(--edge); color: #fff;
     background: rgba(255,255,255,.1); font-size: 1.1rem; cursor: pointer; display: grid; place-items: center;
     transition: background .15s, transform .1s; touch-action: manipulation; font-family: inherit;
   }
@@ -183,10 +186,25 @@
   .starlabels { display: flex; gap: 14px; justify-content: center; font-size: .72rem; color: var(--muted); font-weight: 800; letter-spacing: .06em; text-transform: uppercase; }
   .starlabels span { width: 64px; }
 
+  /* first-play hint toast (sits above the touch controls) */
+  #hint {
+    position: absolute; left: 50%; bottom: calc(130px + env(safe-area-inset-bottom)); transform: translateX(-50%) translateY(8px); z-index: 5;
+    max-width: min(92%, 440px); padding: 10px 16px; border-radius: 999px; background: rgba(20, 12, 60, .9); border: 1px solid var(--edge);
+    color: #fff; font-weight: 800; font-size: .95rem; text-align: center; opacity: 0; pointer-events: none; transition: opacity .3s, transform .3s;
+    box-shadow: 0 10px 30px rgba(0,0,0,.4);
+  }
+  #hint.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  body:not(.touch) #hint { bottom: 28px; }
+
+  /* Narrow screens: HUD pills take their own row under the bar so nothing is pushed off-screen */
+  @media (max-width: 700px) {
+    .hud { order: 3; flex-basis: 100%; justify-content: center; gap: 6px; }
+    .topbar { padding-bottom: 6px; }
+  }
   @media (max-width: 560px) {
     .home { font-size: .8rem; padding: 7px 10px; }
     .pill { font-size: .78rem; padding: 5px 9px; }
-    .pill.level { display: none; }
+    .pill.level { max-width: 34vw; }
     .panel { padding: 22px 16px; border-radius: 22px; }
     .btn { padding: 12px 18px; font-size: .95rem; }
     .tbtn { width: 66px; height: 66px; }
@@ -221,6 +239,7 @@
       </div>
       <div class="tbtn" id="tJump" aria-label="Jump">▲</div>
     </div>
+    <div id="hint" role="status" aria-live="polite"></div>
 
     <!-- Title -->
     <div class="overlay show" id="screenTitle">
@@ -633,8 +652,12 @@ const Sfx = (() => {
   }
   return {
     get muted() { return muted; },
+    get ac() { return ac; },
     toggle() { muted = !muted; try { localStorage.setItem(K(MUTE_KEY), muted ? '1' : '0'); } catch (e) { /* ignore */ } return muted; },
     unlock() { context(); },
+    combo(n) { tone({ f: 520 + n * 90, f2: 780 + n * 90, type: 'triangle', dur: 0.14, vol: 0.1 }); },
+    best()   { [784, 988, 1175, 1568, 1175, 1568, 1976].forEach((f, i) => tone({ f, type: 'triangle', dur: 0.16, vol: 0.09, delay: i * 0.07 })); },
+    over()   { [392, 330, 262, 196].forEach((f, i) => tone({ f, f2: f * 0.96, type: 'sawtooth', dur: 0.36, vol: 0.07, delay: i * 0.22 })); },
     jump()   { tone({ f: 330, f2: 660, type: 'square', dur: 0.13, vol: 0.06 }); },
     coin()   { tone({ f: 1046, type: 'sine', dur: 0.08, vol: 0.12 }); tone({ f: 1568, type: 'sine', dur: 0.18, vol: 0.12, delay: 0.07 }); },
     stomp()  { noise(0.12, 0.25); tone({ f: 220, f2: 70, type: 'triangle', dur: 0.18, vol: 0.2 }); },
@@ -647,6 +670,45 @@ const Sfx = (() => {
     land()   { noise(0.05, 0.08); },
   };
 })();
+
+/* ---------- Music: looping chiptune arpeggio, scheduled ahead on the audio clock ---------- */
+function makeMusic(getCtx, getDest, song) {
+  let timer = 0, step = 0, nextT = 0, bus = null;
+  const STEP = 60 / song.bpm / 4;                                   // one 16th note
+  const hz = (semi) => song.root * Math.pow(2, semi / 12);
+  function note(ac, f, t, d, type, v) {
+    const o = ac.createOscillator(), g = ac.createGain();
+    o.type = type; o.frequency.setValueAtTime(f, t);
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(v, t + 0.012); g.gain.exponentialRampToValueAtTime(0.0001, t + d);
+    o.connect(g).connect(bus); o.start(t); o.stop(t + d + 0.03);
+  }
+  function tick() {
+    const ac = getCtx(); if (!ac) return;
+    while (nextT < ac.currentTime + 0.3) {
+      const ch = song.chords[Math.floor(step / 16) % song.chords.length], i = step % 16;
+      const a = song.arp[i % song.arp.length];
+      if (a !== null) note(ac, hz(ch[a % ch.length] + 12 * Math.floor(a / ch.length)), nextT, STEP * 0.9, song.lead, song.vol);
+      if (i % 8 === 0) note(ac, hz(ch[0] - 12), nextT, STEP * 3.6, song.bass, song.vol * 0.8);
+      if (i % 8 === 4) note(ac, hz(ch[2 % ch.length] - 12), nextT, STEP * 1.8, song.bass, song.vol * 0.55);
+      nextT += STEP; step++;
+    }
+  }
+  return {
+    start() {
+      const ac = getCtx(); if (!ac || timer) return;
+      if (!bus) { bus = ac.createGain(); const lp = ac.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 2400; bus.connect(lp).connect(getDest()); }
+      nextT = ac.currentTime + 0.05; step = 0; tick(); timer = setInterval(tick, 120);
+    },
+    stop() { if (timer) clearInterval(timer); timer = 0; },
+    get on() { return !!timer; },
+  };
+}
+// Upbeat adventure loop: C · F · G · Am at 126 BPM (semitones from C4)
+const Music = makeMusic(() => Sfx.ac, () => Sfx.ac.destination, {
+  bpm: 126, root: 261.63, lead: 'triangle', bass: 'square', vol: 0.05,
+  chords: [[0, 4, 7], [-7, -3, 0], [-5, -1, 2], [-3, 0, 4]],
+  arp: [0, 2, 3, 2, 1, 3, 4, 3, 0, 2, 3, 5, 4, 3, 2, null],
+});
 
 /* ==================================================================
    INPUT (keyboard + multi-touch)
@@ -708,12 +770,15 @@ const game = {
   start: { x: 0, y: 0 }, checkpoint: { x: 0, y: 0 }, goal: { c: 0, r: 0 },
   enemies: [], enemySpawns: [], platforms: [], particles: [], springs: new Map(),
   completeT: 0, completeShown: false, demoTheme: 'meadow', stats: null,
+  floats: [], shake: 0,   // juice: floating labels (world space) + screen shake 0..1
 };
+function addFloat(x, y, text, color, big) { game.floats.push({ x, y, text, color: color || '#fff', big: !!big, t: 0, life: 0.9 }); }
+function shake(n) { game.shake = Math.max(game.shake, n); }
 const cam = { x: 0, y: 0 };
 const player = {
   x: 0, y: 0, w: 26, h: 34, vx: 0, vy: 0, facing: 1, onGround: false, wasOnGround: false,
   coyote: 0, jumpBuf: 0, jumping: false, riding: null, prevBottom: 0, dead: false, deadT: 0, rot: 0,
-  sx: 1, sy: 1, anim: 0, blink: 0, idleT: 0,
+  sx: 1, sy: 1, anim: 0, blink: 0, idleT: 0, stompChain: 0,
 };
 
 /* ==================================================================
@@ -760,6 +825,7 @@ function resetEnemies() { game.enemies = game.enemySpawns.map(s => makeEnemy(s.c
 function startLevel(idx) {
   loadLevel(idx);
   game.lives = 3; game.coins = 0; game.time = 0; game.bigStar = false; game.completeT = 0; game.completeShown = false;
+  game.floats = []; game.shake = 0;
   game.state = 'playing';
   resetEnemies();
   respawn(true);
@@ -768,9 +834,22 @@ function startLevel(idx) {
   els.level.textContent = `${idx + 1}. ${LEVELS[idx].name}`;
   els.coinsTotal.textContent = game.coinsTotal;
   syncHUD(true);
+  firstPlayHint();
+}
+/* First-play hint (once per player) */
+let hintTimer = 0;
+function showHint(text, ms) {
+  const h = $('hint'); h.textContent = text; h.classList.add('show');
+  clearTimeout(hintTimer); hintTimer = setTimeout(() => h.classList.remove('show'), ms || 4500);
+}
+function firstPlayHint() {
+  let seen = false;
+  try { seen = localStorage.getItem(K('amalworld-hinted')) === '1'; localStorage.setItem(K('amalworld-hinted'), '1'); } catch (e) { /* ignore */ }
+  if (seen) return;
+  showHint(document.body.classList.contains('touch') ? '◀ ▶ run · ▲ jump (hold for higher) · land on grumps to squash them!' : '← → run · Space jump (hold for higher) · land on grumps to squash them!', 6000);
 }
 function respawn(snapCamera) {
-  Object.assign(player, { x: game.checkpoint.x, y: game.checkpoint.y, vx: 0, vy: 0, onGround: false, coyote: 0, jumpBuf: 0, jumping: false, riding: null, dead: false, deadT: 0, rot: 0, sx: 1, sy: 1, facing: 1 });
+  Object.assign(player, { x: game.checkpoint.x, y: game.checkpoint.y, vx: 0, vy: 0, onGround: false, coyote: 0, jumpBuf: 0, jumping: false, riding: null, dead: false, deadT: 0, rot: 0, sx: 1, sy: 1, facing: 1, stompChain: 0 });
   input.jumpPressed = false;
   resetEnemies();
   updateCamera(1);
@@ -782,6 +861,8 @@ function respawn(snapCamera) {
    ================================================================== */
 function update(dt) {
   game.t += dt;
+  if (game.shake > 0) game.shake = Math.max(0, game.shake - dt * 3.5);
+  for (let i = game.floats.length - 1; i >= 0; i--) { const f = game.floats[i]; f.t += dt; if (f.t > f.life) game.floats.splice(i, 1); }
   if (game.state === 'playing') {
     game.time += dt;
     updatePlatforms(game.time);
@@ -875,7 +956,7 @@ function updatePlayer(dt) {
       p.y = pl.y - p.h; p.vy = 0; p.onGround = true; p.riding = pl;
     }
   }
-  if (p.onGround && !p.wasOnGround) { p.sx = 1.25; p.sy = 0.78; Sfx.land(); }
+  if (p.onGround && !p.wasOnGround) { p.sx = 1.25; p.sy = 0.78; Sfx.land(); p.stompChain = 0; }
   p.sx += (1 - p.sx) * 0.18; p.sy += (1 - p.sy) * 0.18;
 
   // --- tile interactions: coins, star, hazards, checkpoint, goal ---
@@ -888,8 +969,10 @@ function updatePlayer(dt) {
       const cx = c * T + T / 2, cy = r * T + T / 2, px = p.x + p.w / 2, py = p.y + p.h / 2;
       if (Math.abs(cx - px) < 30 && Math.abs(cy - py) < 32) {
         game.grid[r][c] = '.';
-        if (ch === 'o') { game.coins++; Sfx.coin(); burst(cx, cy, 8, ['#ffd23f', '#fff1a8', '#ff9f1c'], 120, 0.5, 4, 400); }
-        else { game.bigStar = true; Sfx.star(); burst(cx, cy, 26, ['#ffd23f', '#fff', '#ff5d8f', '#4cc9f0'], 220, 1.1, 6, 300); }
+        if (ch === 'o') {
+          game.coins++; Sfx.coin(); burst(cx, cy, 8, ['#ffd23f', '#fff1a8', '#ff9f1c'], 120, 0.5, 4, 400);
+          addFloat(cx, cy - 14, game.coins === game.coinsTotal ? 'ALL COINS!' : '+1', '#ffd23f', game.coins === game.coinsTotal);
+        } else { game.bigStar = true; Sfx.star(); shake(0.35); burst(cx, cy, 26, ['#ffd23f', '#fff', '#ff5d8f', '#4cc9f0'], 220, 1.1, 6, 300); addFloat(cx, cy - 30, '🌟 BIG STAR!', '#ffd23f', true); }
       }
     } else if (ch === '^') {
       if (boxHit(p.x + 4, p.y + 4, p.w - 8, p.h - 4, c * T + 7, r * T + 16, T - 14, T - 16)) { die(); return; }
@@ -899,6 +982,7 @@ function updatePlayer(dt) {
       game.grid[r][c] = 'c';
       game.checkpoint = { x: c * T + (T - p.w) / 2, y: (r + 1) * T - p.h };
       Sfx.check(); burst(c * T + T / 2, r * T, 14, ['#3fe0a8', '#fff', '#4cc9f0'], 140, 0.8, 4, 300);
+      addFloat(c * T + T / 2, r * T - T, 'CHECKPOINT ✓', '#3fe0a8', true);
     }
     if (c === game.goal.c && r >= game.goal.r - 3 && r <= game.goal.r) { finishLevel(); return; }
   }
@@ -909,7 +993,10 @@ function updatePlayer(dt) {
       if (p.vy > 0 && p.prevBottom <= e.y + 12) {
         e.dying = true; e.squashT = 0.45;
         p.vy = -(input.jump ? STOMP_V_HELD : STOMP_V); p.y = e.y - p.h; p.jumping = false; p.sx = 0.8; p.sy = 1.2;
-        Sfx.stomp(); burst(e.x + e.w / 2, e.y + e.h / 2, 14, [game.theme.enemy, game.theme.enemyDark, '#fff'], 180, 0.7, 5, 500);
+        p.stompChain++;
+        Sfx.stomp(); shake(0.3 + p.stompChain * 0.1); burst(e.x + e.w / 2, e.y + e.h / 2, 14, [game.theme.enemy, game.theme.enemyDark, '#fff'], 180, 0.7, 5, 500);
+        if (p.stompChain > 1) { addFloat(e.x + e.w / 2, e.y - 10, `×${p.stompChain} STOMP COMBO!`, '#ff5d8f', true); Sfx.combo(p.stompChain); }
+        else addFloat(e.x + e.w / 2, e.y - 10, 'STOMP!', '#fff');
       } else { die(); return; }
     }
   }
@@ -948,7 +1035,8 @@ function bounce(c, r) {
   const p = player;
   p.vy = -SPRING_V; p.onGround = false; p.coyote = 0; p.riding = null; p.jumping = false; p.sx = 0.7; p.sy = 1.35;
   game.springs.set(c + ',' + r, 0.35);
-  Sfx.spring(); burst(c * T + T / 2, r * T + 6, 10, ['#fff', game.theme.flag, '#ffd23f'], 140, 0.5, 4, 400);
+  Sfx.spring(); shake(0.25); burst(c * T + T / 2, r * T + 6, 10, ['#fff', game.theme.flag, '#ffd23f'], 140, 0.5, 4, 400);
+  addFloat(c * T + T / 2, r * T - 10, 'BOING!', '#fff');
 }
 function boxHit(ax, ay, aw, ah, bx, by, bw, bh) { return ax < bx + bw && ax + aw > bx && ay < by + bh && ay + ah > by; }
 
@@ -956,7 +1044,8 @@ function die(fell) {
   const p = player;
   if (p.dead) return;
   p.dead = true; p.deadT = fell ? 0.7 : 0; p.vy = fell ? 0 : -520; p.vx = 0; p.rot = 0;
-  Sfx.hurt();
+  Sfx.hurt(); shake(0.8);
+  $('hint').classList.remove('show');
   if (!fell) burst(p.x + p.w / 2, p.y + p.h / 2, 16, ['#ffb84d', '#fff', '#ff5d8f'], 160, 0.8, 5, 500);
 }
 function afterDeath() {
@@ -964,6 +1053,7 @@ function afterDeath() {
   syncHUD(true);
   if (game.lives <= 0) {
     game.state = 'gameover'; document.body.classList.remove('playing');
+    Sfx.over();
     $('goLevel').textContent = `${game.levelIndex + 1}. ${game.def.name}`;
     $('goCoins').textContent = `${game.coins}/${game.coinsTotal}`;
     $('goStars').textContent = `${totalStars()} / ${LEVELS.length * 3}`;
@@ -1015,10 +1105,12 @@ function updateCamera(dt) {
   const k = dt >= 1 ? 1 : 1 - Math.pow(0.0005, dt); // smooth, frame-rate independent
   cam.x += (tx - cam.x) * Math.min(1, k * 0.9);
   cam.y += (ty - cam.y) * Math.min(1, k * 0.6);
-  // Clamp to the level. If the view is taller than the level, bottom-align it (extra sky on top).
+  // Clamp to the level. If the view is taller than the level (portrait), bottom-align it (extra sky on top),
+  // lifted by a pad on touch screens so the ground isn't hidden under the on-screen buttons.
   const maxX = Math.max(0, levelW() - VIEW_W), spanY = levelH() - VIEW_H;
   cam.x = Math.max(0, Math.min(maxX, cam.x));
-  cam.y = spanY >= 0 ? Math.max(0, Math.min(spanY, cam.y)) : spanY;
+  const pad = document.body.classList.contains('touch') ? Math.min(-spanY, VIEW_H * 0.18) : 0;
+  cam.y = spanY >= 0 ? Math.max(0, Math.min(spanY, cam.y)) : spanY + pad;
 }
 
 /* ---------- particles ---------- */
@@ -1044,7 +1136,8 @@ function finishLevel() {
   game.state = 'complete'; game.completeT = 0; game.completeShown = false;
   player.vx = 0; player.vy = 0; input.jumpPressed = false;
   document.body.classList.remove('playing');
-  Sfx.clear();
+  $('hint').classList.remove('show');
+  Sfx.clear(); shake(0.5);
   const gx = game.goal.c * T + T / 2, gy = (game.goal.r - 1) * T;
   burst(gx, gy, 40, [game.theme.flag, '#ffd23f', '#fff', '#3fe0a8', '#4cc9f0'], 260, 1.4, 6, 400);
   // stars: finish, all coins, under par
@@ -1057,6 +1150,8 @@ function finishLevel() {
   save.unlocked = Math.max(save.unlocked, Math.min(LEVELS.length, game.levelIndex + 2));
   persist();
   game.stats = { stars, allCoins, underPar, isBest, time: game.time };
+  if (isBest && prev.best != null) setTimeout(() => Sfx.best(), 900);   // beat your own time: extra fanfare after the clear jingle
+  addFloat(gx, gy - T * 1.5, stars === 3 ? 'PERFECT!' : 'LEVEL CLEAR!', '#ffd23f', true);
   if (window.Arcade) Arcade.record(GAME_ID, totalStars(), { level: game.levelIndex + 1, stars, time: Math.round(game.time * 10) / 10 });
 }
 function showComplete() {
@@ -1099,7 +1194,7 @@ function fmtTime(s, noTenths) {
 /* ---------- HUD ---------- */
 let hudCache = { coins: -1, lives: -1, timer: '' };
 function syncHUD(force) {
-  if (force || hudCache.coins !== game.coins) { els.coins.textContent = game.coins; hudCache.coins = game.coins; }
+  if (force || hudCache.coins !== game.coins) { els.coins.textContent = game.coins; hudCache.coins = game.coins; if (!force) { els.coins.classList.remove('pop'); void els.coins.offsetWidth; els.coins.classList.add('pop'); } }
   if (force || hudCache.lives !== game.lives) { els.lives.textContent = game.lives; hudCache.lives = game.lives; }
   const t = fmtTime(game.time);
   if (force || hudCache.timer !== t) { els.timer.textContent = t; hudCache.timer = t; els.timer.classList.toggle('good', game.def && game.time <= game.def.par); }
@@ -1173,7 +1268,9 @@ function syncMuteBtn() { els.mute.textContent = Sfx.muted ? '🔇' : '🔊'; els
 els.mute.addEventListener('click', () => { Sfx.unlock(); Sfx.toggle(); syncMuteBtn(); Sfx.select(); });
 syncMuteBtn();
 document.addEventListener('visibilitychange', () => { if (document.hidden && game.state === 'playing') togglePause(); });
+// iOS: create/resume the AudioContext on the very first touch / pointer anywhere
 window.addEventListener('pointerdown', () => Sfx.unlock(), { once: true });
+window.addEventListener('touchend', () => Sfx.unlock(), { passive: true, once: true });
 
 /* ==================================================================
    RENDERING
@@ -1183,9 +1280,11 @@ function resize() {
   const rect = stage.getBoundingClientRect();
   if (rect.width < 10 || rect.height < 10) return;
   const aspect = rect.width / rect.height;
-  // Landscape: fixed 540 tall, width follows aspect. Portrait/tall: 640 wide, height grows (max 720).
-  VIEW_W = Math.round(Math.max(640, Math.min(1100, 540 * aspect)));
-  VIEW_H = Math.round(Math.max(540, Math.min(720, VIEW_W / aspect)));
+  // Landscape: fixed 540 tall, width follows aspect. Portrait/tall: narrower logical view (bigger tiles on phones)
+  // and the height follows the aspect so the canvas always fills the stage (no letterbox bands).
+  const minW = aspect < 1 ? (rect.width < 500 ? 480 : 600) : 640;
+  VIEW_W = Math.round(Math.max(minW, Math.min(1100, 540 * aspect)));
+  VIEW_H = Math.round(Math.max(420, Math.min(1200, VIEW_W / aspect)));   // 420 lets wide phones in landscape fill edge to edge
   scale = Math.min(rect.width / VIEW_W, rect.height / VIEW_H);
   const cssW = Math.floor(VIEW_W * scale), cssH = Math.floor(VIEW_H * scale);
   dpr = Math.min(2, window.devicePixelRatio || 1);
@@ -1221,6 +1320,8 @@ function render() {
   const th = inLevel ? game.theme : THEMES[game.demoTheme];
   const cx = inLevel ? cam.x : game.t * 28, cy = inLevel ? cam.y : 100;
   const lh = inLevel ? levelH() : 16 * T;
+  const sh = inLevel && game.shake > 0 ? game.shake * game.shake * 9 : 0;   // eased screen shake (world + backdrop move together)
+  if (sh) ctx.translate((Math.random() - 0.5) * sh, (Math.random() - 0.5) * sh);
   drawBackground(th, cx, cy, lh);
   if (!inLevel) return;
   ctx.save();
@@ -1230,6 +1331,21 @@ function render() {
   for (const e of game.enemies) if (e.alive) drawEnemy(e, th);
   drawHero(player, ctx);
   drawParticles();
+  drawFloats();
+  ctx.restore();
+}
+function drawFloats() {
+  if (!game.floats.length) return;
+  ctx.save();
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.lineJoin = 'round';
+  for (const f of game.floats) {
+    const k = f.t / f.life, s = k < 0.15 ? 0.6 + (k / 0.15) * 0.5 : 1;
+    ctx.globalAlpha = k < 0.7 ? 1 : 1 - (k - 0.7) / 0.3;
+    ctx.font = `900 ${Math.round((f.big ? 22 : 15) * s)}px ${getComputedStyle(document.body).fontFamily}`;
+    const y = f.y - k * 46;
+    ctx.lineWidth = f.big ? 5 : 3.5; ctx.strokeStyle = 'rgba(20,12,60,.8)'; ctx.strokeText(f.text, f.x, y);
+    ctx.fillStyle = f.color; ctx.fillText(f.text, f.x, y);
+  }
   ctx.restore();
 }
 
@@ -1244,21 +1360,27 @@ function bgImage(name) {
 function drawBackground(th, cx, cy, lh) {
   const g = ctx.createLinearGradient(0, 0, 0, VIEW_H);
   g.addColorStop(0, th.skyTop); g.addColorStop(1, th.skyBot);
-  ctx.fillStyle = g; ctx.fillRect(0, 0, VIEW_W, VIEW_H);
+  ctx.fillStyle = g; ctx.fillRect(-20, -20, VIEW_W + 40, VIEW_H + 40);
   const yShift = (lh - VIEW_H - cy) * 0.25; // camera up -> scenery slides down a little
 
   const im = th.bg && bgImage(th.bg);
   if (im) {
-    // cover-fit, tiled horizontally, scrolled at 0.3x camera speed
-    const s = Math.max(VIEW_W / im.naturalWidth, VIEW_H / im.naturalHeight);
-    const dw = im.naturalWidth * s, dh = im.naturalHeight * s;
+    // cover-fit (slightly oversized so screen shake never shows the sky gradient at the edges), tiled
+    // horizontally at 0.3x camera speed. Every other tile is mirrored so the painted scene meets itself
+    // at each seam instead of showing a hard cut.
+    const s = Math.max(VIEW_W / im.naturalWidth, VIEW_H / im.naturalHeight) * 1.03;
+    const dw = Math.ceil(im.naturalWidth * s), dh = Math.ceil(im.naturalHeight * s);
     const y = Math.max(VIEW_H - dh, Math.min(0, VIEW_H - dh + yShift * 0.3));
-    let x = -((cx * 0.3) % dw); if (x > 0) x -= dw;
-    for (; x < VIEW_W; x += dw) ctx.drawImage(im, x, y, dw + 1, dh);
+    const off = cx * 0.3 + VIEW_W * 0.015;
+    let i = Math.floor(off / dw);
+    for (let x = i * dw - off; x < VIEW_W; x += dw, i++) {
+      if (i & 1) { ctx.save(); ctx.translate(x + dw, y); ctx.scale(-1, 1); ctx.drawImage(im, 0, 0, dw, dh); ctx.restore(); }
+      else ctx.drawImage(im, x, y, dw, dh);
+    }
     // soften the painted foreground so real platforms/hazards stay readable
     const v = ctx.createLinearGradient(0, VIEW_H * 0.55, 0, VIEW_H);
     v.addColorStop(0, 'rgba(0,0,0,0)'); v.addColorStop(1, 'rgba(0,0,0,.3)');
-    ctx.fillStyle = v; ctx.fillRect(0, VIEW_H * 0.55, VIEW_W, VIEW_H * 0.45);
+    ctx.fillStyle = v; ctx.fillRect(-20, VIEW_H * 0.55, VIEW_W + 40, VIEW_H * 0.45 + 20);
     drawAmbient(th, cx);
     return;
   }
@@ -1352,6 +1474,16 @@ function drawTiles(th) {
       case '^': drawSpikes(x, y); break;
       case 'S': drawSpring(c, r, x, y, th); break;
       default: break;
+    }
+  }
+  // portrait: the view can extend below the map — continue ground / liquid down so there is no hard edge
+  const below = cam.y + VIEW_H - levelH();
+  if (below > 0) {
+    const yb = levelH(), bottom = game.grid[game.rows - 1];
+    for (let c = c0; c <= c1; c++) {
+      const ch = bottom[c];
+      if (ch === '#') { ctx.fillStyle = th.ground; ctx.fillRect(c * T, yb, T, below + 2); }
+      else if (ch === '~') { ctx.fillStyle = th.liquid; ctx.fillRect(c * T, yb, T, below + 2); }
     }
   }
   // pass 2: pickups & flags (on top)
@@ -1607,6 +1739,9 @@ function frame(now) {
   if (steps >= 6) acc = 0;
   render();
   drawPreview();
+  // music follows game state + mute (stops on pause / level end / hidden tab)
+  const wantMusic = game.state === 'playing' && !Sfx.muted && !document.hidden;
+  if (wantMusic !== Music.on) { wantMusic ? Music.start() : Music.stop(); }
 }
 
 /* ---------- arcade (player profiles) ---------- */

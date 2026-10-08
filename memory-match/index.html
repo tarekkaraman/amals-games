@@ -63,17 +63,17 @@ button:focus-visible{outline:3px solid var(--cyan);outline-offset:2px}
 
 /* ---------- Top bar ---------- */
 .top{
-  position:relative;z-index:5;flex:0 0 var(--top);height:var(--top);
-  display:flex;align-items:center;gap:10px;padding:0 12px;
+  position:relative;z-index:5;flex:0 0 auto;height:calc(var(--top) + env(safe-area-inset-top));
+  display:flex;align-items:center;gap:10px;padding:env(safe-area-inset-top) 12px 0;
   background:linear-gradient(180deg,rgba(10,13,40,.92),rgba(10,13,40,.6));
   border-bottom:1px solid var(--line);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)
 }
 .home{
-  display:inline-flex;align-items:center;gap:6px;text-decoration:none;color:var(--ink);font-weight:800;
+  display:inline-flex;align-items:center;gap:6px;text-decoration:none;color:var(--ink);font-weight:800;min-height:44px;
   padding:7px 12px;border-radius:999px;background:rgba(255,255,255,.08);border:1px solid var(--line);white-space:nowrap;font-size:.92rem
 }
 .home:hover{background:rgba(255,255,255,.14)}
-.top .arc-chip{padding:6px 10px;font-size:.82rem;background:rgba(255,255,255,.08);border-color:var(--line);flex:0 0 auto}
+.top .arc-chip{padding:6px 10px;font-size:.82rem;background:rgba(255,255,255,.08);border-color:var(--line);flex:0 0 auto;min-height:44px}
 .playing{margin:-6px 0 14px;color:var(--muted);font-weight:700;font-size:.95rem}
 .playing b{color:var(--ink)}
 .stats{display:flex;gap:6px;margin-left:auto;margin-right:auto;min-width:0}
@@ -87,7 +87,7 @@ button:focus-visible{outline:3px solid var(--cyan);outline-offset:2px}
 .stat.over b{color:var(--pink)}
 .ctl{display:flex;gap:6px}
 .icon{
-  width:40px;height:40px;border-radius:12px;background:rgba(255,255,255,.08);border:1px solid var(--line);
+  width:44px;height:44px;border-radius:12px;background:rgba(255,255,255,.08);border:1px solid var(--line);
   font-size:1.15rem;display:grid;place-items:center;font-family:var(--emoji)
 }
 .icon:hover{background:rgba(255,255,255,.15)}
@@ -172,10 +172,10 @@ body:not(.kb) .card.kfocus::before{display:none}
 
 /* ---------- Screens & overlays ---------- */
 .screen,.overlay{position:fixed;inset:0;z-index:20;display:flex;align-items:center;justify-content:center;padding:14px}
-.screen{top:var(--top);overflow:auto;-webkit-overflow-scrolling:touch;align-items:flex-start;padding:16px 14px 30px;z-index:10}
-.overlay{background:rgba(5,7,24,.72);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
+.screen{top:calc(var(--top) + env(safe-area-inset-top));overflow:auto;-webkit-overflow-scrolling:touch;align-items:flex-start;padding:16px 14px calc(30px + env(safe-area-inset-bottom));z-index:10}
+.overlay{background:rgba(5,7,24,.72);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);overflow:auto;-webkit-overflow-scrolling:touch}
 .panel{
-  width:min(100%,560px);background:var(--panel);border:1px solid var(--line);border-radius:24px;
+  width:min(100%,560px);background:var(--panel);border:1px solid var(--line);border-radius:24px;margin:auto;
   box-shadow:0 30px 70px rgba(0,0,0,.5);padding:22px 20px;text-align:center;
   animation:pop .35s cubic-bezier(.2,.9,.3,1.2)
 }
@@ -264,21 +264,32 @@ body:not(.kb) .card.kfocus::before{display:none}
 
 /* confetti canvas */
 #confetti{position:fixed;inset:0;z-index:30;pointer-events:none}
+/* match flash + floating "+1 pair" / streak labels */
+#flash{position:fixed;inset:0;z-index:12;pointer-events:none;background:#fff;opacity:0}
+#flash.go{animation:flash .35s ease-out}
+@keyframes flash{from{opacity:.22}to{opacity:0}}
+.float{position:fixed;z-index:14;pointer-events:none;transform:translate(-50%,-50%);font-weight:900;font-size:1.15rem;color:#fff;
+  text-shadow:0 2px 0 rgba(0,0,0,.45),0 0 14px rgba(255,209,102,.6);white-space:nowrap;animation:floatUp 1s ease-out forwards}
+.float.big{font-size:1.6rem;color:var(--gold)}
+@keyframes floatUp{0%{opacity:0;transform:translate(-50%,-30%) scale(.6)}20%{opacity:1;transform:translate(-50%,-60%) scale(1.15)}100%{opacity:0;transform:translate(-50%,-160%) scale(1)}}
+.stat b.pop{animation:statpop .35s ease}
+@keyframes statpop{40%{transform:scale(1.35)}}
 
 /* ---------- Responsive ---------- */
 @media (max-width:640px){
-  :root{--top:52px}
+  :root{--top:56px}
   .home{font-size:.8rem;padding:6px 10px}
   .stat{min-width:46px;padding:3px 6px}
   .stat b{font-size:.95rem}
   .stat .k{font-size:.52rem}
-  .icon{width:36px;height:36px}
+  .ctl{gap:4px}
   .themes{grid-template-columns:repeat(3,1fr)}
   .theme .em{font-size:1.1rem}
   .panel{padding:18px 14px}
 }
 @media (max-width:400px){
   .home span{display:none}
+  .home{min-width:44px;justify-content:center}
   .stat.best{display:none}
 }
 @media (max-height:420px) and (orientation:landscape){
@@ -291,6 +302,7 @@ body:not(.kb) .card.kfocus::before{display:none}
   .card{transition:transform .12s linear}
   .card.matched,.card.shake{animation:none}
   .panel{animation:none}
+  #flash.go{animation:none}
   .bigstars span.lit{animation:none}
   .card.shuffling{transition:none}
 }
@@ -299,6 +311,7 @@ body:not(.kb) .card.kfocus::before{display:none}
 <body class="on-start">
 
 <canvas id="confetti" aria-hidden="true"></canvas>
+<div id="flash" aria-hidden="true"></div>
 
 <!-- ============ Top bar ============ -->
 <header class="top">
@@ -524,8 +537,11 @@ const audio = (() => {
     o.start(t); o.stop(t + dur + 0.05);
   }
   return {
+    get ctx() { return ctx; },
     unlock() { const c = ensure(); if (c && c.state === 'suspended') c.resume().catch(() => {}); },
     flip()     { tone('triangle', 520, 330, 0.09, 0.08); },
+    streak(n)  { [0, 4, 7, 12].slice(0, Math.min(4, n + 1)).forEach((s, i) => tone('triangle', 660 * Math.pow(2, s / 12), 660 * Math.pow(2, s / 12), 0.14, 0.09, i * 0.06)); },
+    best()     { [784, 988, 1175, 1568, 1175, 1568, 1976].forEach((f, i) => tone('triangle', f, f, 0.16, 0.08, i * 0.07)); },
     tick()     { tone('square', 700, 700, 0.04, 0.03); },
     match()    { tone('sine', 523, 523, 0.14, 0.12); tone('sine', 659, 659, 0.14, 0.12, 0.09); tone('sine', 784, 784, 0.22, 0.12, 0.18); },
     mismatch() { tone('sawtooth', 220, 150, 0.18, 0.045); tone('sawtooth', 165, 120, 0.2, 0.035, 0.06); },
@@ -534,6 +550,49 @@ const audio = (() => {
     lose()     { tone('sine', 392, 262, 0.5, 0.08); }
   };
 })();
+
+/* ---------- Music: calm looping arpeggio, scheduled ahead on the audio clock ---------- */
+function makeMusic(getCtx, getDest, song) {
+  let timer = 0, step = 0, nextT = 0, bus = null;
+  const STEP = 60 / song.bpm / 4;                                   // one 16th note
+  const hz = (semi) => song.root * Math.pow(2, semi / 12);
+  function note(ac, f, t, d, type, v) {
+    const o = ac.createOscillator(), g = ac.createGain();
+    o.type = type; o.frequency.setValueAtTime(f, t);
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(v, t + 0.012); g.gain.exponentialRampToValueAtTime(0.0001, t + d);
+    o.connect(g).connect(bus); o.start(t); o.stop(t + d + 0.03);
+  }
+  function tick() {
+    const ac = getCtx(); if (!ac) return;
+    while (nextT < ac.currentTime + 0.3) {
+      const ch = song.chords[Math.floor(step / 16) % song.chords.length], i = step % 16;
+      const a = song.arp[i % song.arp.length];
+      if (a !== null) note(ac, hz(ch[a % ch.length] + 12 * Math.floor(a / ch.length)), nextT, STEP * 1.6, song.lead, song.vol);
+      if (i % 8 === 0) note(ac, hz(ch[0] - 12), nextT, STEP * 3.6, song.bass, song.vol * 0.8);
+      if (i % 8 === 4) note(ac, hz(ch[2 % ch.length] - 12), nextT, STEP * 1.8, song.bass, song.vol * 0.55);
+      nextT += STEP; step++;
+    }
+  }
+  return {
+    start() {
+      const ac = getCtx(); if (!ac || timer) return;
+      if (!bus) { bus = ac.createGain(); const lp = ac.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 1800; bus.connect(lp).connect(getDest()); }
+      nextT = ac.currentTime + 0.05; step = 0; tick(); timer = setInterval(tick, 120);
+    },
+    stop() { if (timer) clearInterval(timer); timer = 0; },
+    get on() { return !!timer; },
+  };
+}
+// Gentle "thinking" loop: Cmaj7 · Am7 · Fmaj7 · G at 96 BPM (semitones from C4)
+const Music = makeMusic(() => audio.ctx, () => audio.ctx.destination, {
+  bpm: 96, root: 261.63, lead: 'sine', bass: 'triangle', vol: 0.06,
+  chords: [[0, 4, 7, 11], [-3, 0, 4, 7], [-7, -3, 0, 4], [-5, -1, 2, 5]],
+  arp: [0, null, 1, 2, null, 3, 2, null, 1, 3, null, 4, 2, null, 1, null],
+});
+function syncMusic() {
+  const want = !!G.def && !G.paused && !G.over && !muted && !document.hidden && $('start').classList.contains('hidden');
+  if (want !== Music.on) { want ? Music.start() : Music.stop(); }
+}
 
 /* ---------------- Confetti (canvas, no strobing) ---------------- */
 const confetti = (() => {
@@ -578,7 +637,7 @@ const G = {
   cards: [],        // [{ i, emoji, el, flipped, matched }]
   open: [],         // currently face-up unmatched cards (0..2)
   lock: false,      // input locked during peek / compare / shuffle
-  moves: 0, mismatches: 0, matchedPairs: 0,
+  moves: 0, mismatches: 0, matchedPairs: 0, streak: 0,
   elapsed: 0, resumeTs: 0, running: false, timerId: 0,
   paused: false, over: false, started: false,
   player: 0, scores: [0, 0],
@@ -596,6 +655,16 @@ function toast(msg, ms) {
   const t = $('toast'); t.textContent = msg; t.classList.add('show');
   clearTimeout(toastId); toastId = setTimeout(() => t.classList.remove('show'), ms || 1400);
 }
+/* floating label over an element (e.g. "+1 pair" above a matched card) */
+function floatText(el, text, big) {
+  if (reducedMotion) return;
+  const r = el.getBoundingClientRect();
+  const f = document.createElement('div'); f.className = 'float' + (big ? ' big' : ''); f.textContent = text;
+  f.style.left = (r.left + r.width / 2) + 'px'; f.style.top = (r.top + r.height * 0.3) + 'px';
+  document.body.appendChild(f); setTimeout(() => f.remove(), 1000);
+}
+function flash() { const f = $('flash'); f.classList.remove('go'); void f.offsetWidth; f.classList.add('go'); }
+function popStat(id) { const b = $(id); b.classList.remove('pop'); void b.offsetWidth; b.classList.add('pop'); }
 
 /* ---------------- Layout: fit the grid to the available area ---------------- */
 function fitGrid() {
@@ -662,7 +731,7 @@ function startLevel(themeId, level) {
   G.theme = THEMES.find(t => t.id === themeId) || THEMES[0];
   G.level = level; G.def = LEVELS[level - 1]; G.mode = mode;
   G.cards = []; G.open = []; G.lock = true;
-  G.moves = 0; G.mismatches = 0; G.matchedPairs = 0;
+  G.moves = 0; G.mismatches = 0; G.matchedPairs = 0; G.streak = 0;
   G.elapsed = 0; G.running = false; G.paused = false; G.over = false; G.started = false;
   G.player = 0; G.scores = [0, 0]; G.focus = 0;
 
@@ -690,6 +759,9 @@ function startLevel(themeId, level) {
   });
   fitGrid();
   updateHUD(); updateTwist(); setFocus(0, false);
+  syncMusic();
+  const firstPlay = !store.get('hinted', false);
+  if (firstPlay) store.set('hinted', true);
 
   // Peek twist: show every card briefly, then hide
   if (G.def.peek) {
@@ -698,11 +770,11 @@ function startLevel(themeId, level) {
     later(() => {
       G.cards.forEach(c => c.el.classList.remove('flipped'));
       G.lock = false;
-      toast(G.mode === 2 ? 'Player 1, go!' : 'Go!', 900);
+      toast(firstPlay ? '👆 Tap two cards to find a pair!' : (G.mode === 2 ? 'Player 1, go!' : 'Go!'), firstPlay ? 3500 : 900);
     }, G.def.peek);
   } else {
     G.lock = false;
-    toast(G.mode === 2 ? 'Player 1, go!' : (G.def.shuffle ? '🔀 Shuffle level!' : 'Go!'), 1000);
+    toast(firstPlay ? '👆 Tap two cards to find a pair!' : (G.mode === 2 ? 'Player 1, go!' : (G.def.shuffle ? '🔀 Shuffle level!' : 'Go!')), firstPlay ? 3500 : 1000);
   }
 }
 
@@ -722,15 +794,18 @@ function onCard(i) {
 }
 function compare() {
   const [a, b] = G.open;
-  G.moves++; G.lock = true; updateHUD();
+  G.moves++; G.lock = true; updateHUD(); popStat('hudMoves');
   if (a.emoji === b.emoji) {
     later(() => {
       a.matched = b.matched = true;
       const who = G.mode === 2 ? (G.player === 0 ? 'p1' : 'p2') : '';
       [a, b].forEach(c => { c.el.classList.add('matched'); if (who) c.el.classList.add(who); c.el.setAttribute('aria-label', `Card ${c.i + 1}, ${c.emoji}, matched`); });
-      G.open = []; G.matchedPairs++;
+      G.open = []; G.matchedPairs++; G.streak++;
       if (G.mode === 2) G.scores[G.player]++;
       audio.match(); updateTwist();
+      // juice: flash, "+1 pair" float, streak counter with rising jingle
+      flash(); floatText(b.el, G.mode === 2 ? `+1 P${G.player + 1}` : '+1 pair');
+      if (G.streak >= 2) { floatText(a.el, `🔥 ${G.streak} in a row!`, true); audio.streak(G.streak); if (G.streak >= 3) confetti.burst(20 + G.streak * 8); }
       G.lock = false;
       if (G.matchedPairs === G.def.pairs) finish();
     }, 320);
@@ -740,7 +815,7 @@ function compare() {
       audio.mismatch();
       later(() => {
         [a, b].forEach(c => { c.flipped = false; c.el.classList.remove('flipped', 'shake'); c.el.setAttribute('aria-label', `Card ${c.i + 1}, face down`); });
-        G.open = []; G.mismatches++;
+        G.open = []; G.mismatches++; G.streak = 0;
         if (G.mode === 2) { G.player = 1 - G.player; toast(`Player ${G.player + 1}'s turn`, 800); }
         updateTwist();
         if (G.def.shuffle && G.mismatches % G.def.shuffle === 0) doShuffle();
@@ -767,7 +842,7 @@ function doShuffle() {
 
 /* ---------------- Level finished ---------------- */
 function finish() {
-  G.over = true; G.lock = true; stopTimer();
+  G.over = true; G.lock = true; stopTimer(); syncMusic();
   const secs = Math.floor(currentTime());
   later(() => {
     if (G.mode === 2) showP2Result();
@@ -814,6 +889,7 @@ function showWin(secs) {
   $('ovWin').classList.remove('hidden');
   $('btnNext').classList.contains('hidden') ? $('btnReplay').focus() : $('btnNext').focus();
   audio.win(); confetti.burst(stars === 3 ? 160 : 90);
+  if (isBest && prev) later(audio.best, 700);   // beat a previous record: extra fanfare after the win jingle
   if (G.level >= LEVELS.length) later(showThemeDone, 1600);   // after the star animation
 }
 function showThemeDone() {
@@ -843,7 +919,7 @@ function showP2Result() {
 /* ---------------- Pause ---------------- */
 function pause() {
   if (G.paused || G.over || !G.def || !$('start').classList.contains('hidden')) return;
-  G.paused = true; stopTimer();
+  G.paused = true; stopTimer(); syncMusic();
   $('pauseInfo').textContent = `${G.theme.name} · Level ${G.level} · ${G.moves} moves · ${fmtTime(Math.floor(currentTime()))}`;
   $('ovPause').classList.remove('hidden'); $('btnResume').focus();
 }
@@ -851,7 +927,7 @@ function resume() {
   if (!G.paused) return;
   G.paused = false; $('ovPause').classList.add('hidden');
   if (G.started && !G.over) startTimer();
-  audio.unlock();
+  audio.unlock(); syncMusic();
 }
 function hideOverlays() { ['ovPause', 'ovWin', 'ovP2', 'ovHow', 'ovTheme'].forEach(id => $(id).classList.add('hidden')); }
 function setThemeBg(id) {
@@ -863,6 +939,7 @@ function setThemeBg(id) {
 function goHome() {
   clearLater(); stopTimer();
   G.paused = false; G.over = true; G.lock = true; G.def = null;
+  syncMusic();
   hideOverlays();
   $('grid').innerHTML = ''; $('twist').innerHTML = '';
   document.body.classList.add('on-start');
@@ -929,7 +1006,11 @@ function setMuted(m) {
   muted = m; store.set('muted', m);
   const b = $('btnMute'); b.textContent = m ? '🔇' : '🔊';
   b.setAttribute('aria-label', m ? 'Unmute' : 'Mute'); b.title = m ? 'Unmute' : 'Mute';
+  syncMusic();
 }
+// iOS: create/resume the AudioContext on the very first touch anywhere
+document.addEventListener('touchend', () => { audio.unlock(); syncMusic(); }, { passive: true, once: true });
+document.addEventListener('pointerdown', () => { audio.unlock(); syncMusic(); }, { once: true });
 $('btnMute').addEventListener('click', () => { setMuted(!muted); audio.unlock(); audio.tick(); });
 $('btnPause').addEventListener('click', () => { G.paused ? resume() : pause(); });
 $('btnResume').addEventListener('click', resume);
@@ -987,7 +1068,7 @@ $('grid').addEventListener('focusin', (e) => {
 });
 
 // auto-pause when the tab is hidden
-document.addEventListener('visibilitychange', () => { if (document.hidden && G.def && G.started && !G.over && !G.paused) pause(); });
+document.addEventListener('visibilitychange', () => { if (document.hidden && G.def && G.started && !G.over && !G.paused) pause(); syncMusic(); });
 let resizeT = 0;
 window.addEventListener('resize', () => { clearTimeout(resizeT); resizeT = setTimeout(fitGrid, 80); });
 window.addEventListener('orientationchange', () => setTimeout(fitGrid, 200));

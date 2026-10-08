@@ -47,10 +47,10 @@ body::before{
 
 /* ---------- Top bar ---------- */
 .topbar{display:flex;align-items:center;gap:10px;padding:8px 12px 6px;flex-wrap:wrap}
-.home{color:var(--ink);text-decoration:none;font-weight:700;background:rgba(255,255,255,.08);border:1px solid var(--line);padding:8px 12px;border-radius:999px;white-space:nowrap;font-size:14px;line-height:1.2;transition:background .15s,transform .15s}
+.home{color:var(--ink);text-decoration:none;font-weight:700;background:rgba(255,255,255,.08);border:1px solid var(--line);padding:8px 12px;border-radius:999px;white-space:nowrap;font-size:14px;line-height:1.2;transition:background .15s,transform .15s;min-height:44px;display:inline-flex;align-items:center}
 .home:hover{background:rgba(255,255,255,.15)}
 .home:active{transform:scale(.97)}
-.topbar .arc-chip{padding:7px 11px;font-size:13px;background:rgba(255,255,255,.08);border-color:var(--line)}
+.topbar .arc-chip{padding:7px 11px;font-size:13px;background:rgba(255,255,255,.08);border-color:var(--line);min-height:44px}
 .playing{color:var(--muted);font-size:14px;margin:-4px 0 12px}
 .playing b{color:#fff}
 .stats{display:flex;gap:6px;flex:1;justify-content:center;min-width:0}
@@ -62,7 +62,7 @@ body::before{
 @keyframes pop{0%{transform:scale(1)}40%{transform:scale(1.3)}100%{transform:scale(1)}}
 .actions{display:flex;gap:6px;margin-left:auto}
 button{font-family:inherit}
-button.icon{width:40px;height:40px;border-radius:12px;border:1px solid var(--line);background:rgba(255,255,255,.08);color:var(--ink);font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .15s,transform .1s}
+button.icon{width:44px;height:44px;border-radius:12px;border:1px solid var(--line);background:rgba(255,255,255,.08);color:var(--ink);font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .15s,transform .1s}
 button.icon:hover{background:rgba(255,255,255,.16)}
 button.icon:active{transform:scale(.94)}
 button.icon:disabled{opacity:.4;cursor:default}
@@ -148,6 +148,10 @@ kbd{display:inline-block;min-width:20px;padding:1px 6px;border-radius:6px;backgr
 .badge{display:none;margin:0 auto 4px;padding:6px 14px;border-radius:999px;background:linear-gradient(90deg,#ffd166,#ff9f1c);color:#2b1d00;font-weight:900;font-size:13px;letter-spacing:.08em;text-transform:uppercase;animation:pop .6s ease}
 .badge.show{display:inline-block}
 .pausehint{color:var(--muted);font-size:14px;margin:4px 0 14px}
+/* First-play hint toast (above the touch controls) */
+#hint{position:fixed;left:50%;bottom:calc(96px + env(safe-area-inset-bottom));transform:translateX(-50%) translateY(8px);z-index:6;max-width:min(92vw,420px);padding:10px 16px;border-radius:999px;background:rgba(14,18,54,.92);border:1px solid rgba(255,255,255,.2);color:#fff;font-weight:800;font-size:14px;text-align:center;opacity:0;pointer-events:none;transition:opacity .3s,transform .3s;box-shadow:0 10px 30px rgba(0,0,0,.4)}
+#hint.show{opacity:1;transform:translateX(-50%) translateY(0)}
+body:not(.touch) #hint{bottom:24px}
 
 @media (prefers-reduced-motion:reduce){
   body::before{animation:none}
@@ -198,6 +202,8 @@ kbd{display:inline-block;min-width:20px;padding:1px 6px;border-radius:6px;backgr
     </nav>
   </div>
 </div>
+
+<div id="hint" role="status" aria-live="polite"></div>
 
 <!-- Start screen -->
 <div class="overlay show" id="startScreen" role="dialog" aria-labelledby="startTitle">
@@ -389,11 +395,14 @@ const Sfx = (() => {
   }
   return {
     ensure,
+    get ac() { return ac; },
+    get master() { return master; },
     get muted() { return muted; },
     setMuted(m) {
       muted = m;
       try { localStorage.setItem(K(LS + 'muted'), m ? '1' : '0'); } catch (e) { /* ignore */ }
     },
+    best()   { [784, 988, 1175, 1568, 1175, 1568, 1976].forEach((f, i) => tone({ f, d: 0.16, type: 'triangle', v: 0.08, t: i * 0.07 })); },
     move()   { tone({ f: 520, d: 0.035, type: 'square', v: 0.045 }); },
     rotate() { tone({ f: 620, f2: 880, d: 0.07, type: 'triangle', v: 0.08 }); },
     soft()   { tone({ f: 300, d: 0.03, type: 'square', v: 0.03 }); },
@@ -412,6 +421,45 @@ const Sfx = (() => {
     pause()  { tone({ f: 440, f2: 330, d: 0.1, type: 'triangle', v: 0.06 }); },
   };
 })();
+
+/* ---------- Music: looping chiptune arpeggio, scheduled ahead on the audio clock ---------- */
+function makeMusic(getCtx, getDest, song) {
+  let timer = 0, step = 0, nextT = 0, bus = null;
+  const STEP = 60 / song.bpm / 4;                                   // one 16th note
+  const hz = (semi) => song.root * Math.pow(2, semi / 12);
+  function note(ac, f, t, d, type, v) {
+    const o = ac.createOscillator(), g = ac.createGain();
+    o.type = type; o.frequency.setValueAtTime(f, t);
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(v, t + 0.012); g.gain.exponentialRampToValueAtTime(0.0001, t + d);
+    o.connect(g).connect(bus); o.start(t); o.stop(t + d + 0.03);
+  }
+  function tick() {
+    const ac = getCtx(); if (!ac) return;
+    while (nextT < ac.currentTime + 0.3) {
+      const ch = song.chords[Math.floor(step / 16) % song.chords.length], i = step % 16;
+      const a = song.arp[i % song.arp.length];
+      if (a !== null) note(ac, hz(ch[a % ch.length] + 12 * Math.floor(a / ch.length)), nextT, STEP * 0.9, song.lead, song.vol);
+      if (i % 8 === 0) note(ac, hz(ch[0] - 12), nextT, STEP * 3.6, song.bass, song.vol * 0.8);
+      if (i % 8 === 4) note(ac, hz(ch[2 % ch.length] - 12), nextT, STEP * 1.8, song.bass, song.vol * 0.55);
+      nextT += STEP; step++;
+    }
+  }
+  return {
+    start() {
+      const ac = getCtx(); if (!ac || timer) return;
+      if (!bus) { bus = ac.createGain(); const lp = ac.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 2400; bus.connect(lp).connect(getDest()); }
+      nextT = ac.currentTime + 0.05; step = 0; tick(); timer = setInterval(tick, 120);
+    },
+    stop() { if (timer) clearInterval(timer); timer = 0; },
+    get on() { return !!timer; },
+  };
+}
+// A minor arcade loop: Am · F · C · G at 120 BPM (semitones from A3)
+const Music = makeMusic(() => Sfx.ac, () => Sfx.master, {
+  bpm: 120, root: 220, lead: 'square', bass: 'triangle', vol: 0.035,
+  chords: [[0, 3, 7], [-4, 0, 3], [3, 7, 10], [-2, 2, 5]],
+  arp: [0, 1, 2, 3, 2, 1, 0, 2, 1, 3, 4, 3, 2, 1, 0, null],
+});
 
 /* ---------- DOM ---------- */
 const $ = (id) => document.getElementById(id);
@@ -561,11 +609,19 @@ function startClear(rows) {
   if (newLevel > G.level) {
     G.level = newLevel;
     addFloat(`LEVEL ${G.level}!`, cx, cell * 4, '#c4b5fd', cell * 1.3, 450);
+    G.flash = Math.max(G.flash, 0.7); G.shake = Math.max(G.shake, 0.8);
+    popEl(elLevel);
     Sfx.levelUp();
   }
-  if (G.score > G.best) G.best = G.score;
+  bumpBest(cx, cell * 6);
   popEl(elScore);
   G.shake = Math.max(G.shake, n >= 4 ? 1.2 : 0.5);
+}
+/* Score passed the previous best for the first time this game: jingle + banner */
+function bumpBest(x, y) {
+  if (G.score <= G.best) return;
+  G.best = G.score;
+  if (!G.bestShown && G.startBest > 0) { G.bestShown = true; addFloat('★ NEW BEST! ★', x, y, '#ffd166', cell * 1.1, 500); Sfx.best(); popEl(elBest); }
 }
 function finishClear() {
   const set = G.clearSet;
@@ -609,8 +665,20 @@ function resetGame() {
   G.gravAcc = 0; G.lockTimer = 0; G.lockResets = 0; G.lowestY = 0;
   G.softDrop = false; G.moveDir = 0; G.dasTimer = 0; G.dasCharged = false; G.leftHeld = false; G.rightHeld = false;
   G.clearing = false; G.clearRows = []; G.clearSet = null; G.clearT = 0;
-  G.floats = []; G.particles = []; G.flash = 0; G.shake = 0; G.overT = 0;
+  G.floats = []; G.particles = []; G.flash = 0; G.shake = 0; G.overT = 0; G.bestShown = false;
   fillQueue();
+}
+/* First-play hint (once per player) */
+let hintTimer = 0;
+function showHint(text, ms) {
+  const h = $('hint'); h.textContent = text; h.classList.add('show');
+  clearTimeout(hintTimer); hintTimer = setTimeout(() => h.classList.remove('show'), ms || 4500);
+}
+function firstPlayHint() {
+  let seen = false;
+  try { seen = localStorage.getItem(K(LS + 'hinted')) === '1'; localStorage.setItem(K(LS + 'hinted'), '1'); } catch (e) { /* ignore */ }
+  if (seen) return;
+  showHint(document.body.classList.contains('touch') ? '👆 Swipe to move · tap to spin · flick down to drop!' : '⌨️ ← → move · ↑ spin · Space to drop!', 5000);
 }
 function hideOverlays() {
   startScreen.classList.remove('show');
@@ -633,6 +701,7 @@ function startGame() {
   setPauseButton();
   spawnNext();
   Sfx.start();
+  firstPlayHint();
 }
 function releaseInputs() {
   G.softDrop = false; G.moveDir = 0; G.leftHeld = false; G.rightHeld = false; G.dasCharged = false;
@@ -663,6 +732,7 @@ function gameOver() {
   releaseInputs();
   if (G.score > G.best) G.best = G.score;
   saveBest();
+  $('hint').classList.remove('show');
   $('ovScore').textContent = fmt(G.score);
   $('ovLines').textContent = fmt(G.lines);
   $('ovLevel').textContent = String(G.level);
@@ -691,7 +761,7 @@ function hardDrop() {
   let n = 0;
   while (tryMove(0, 1)) n++;
   G.score += n * 2;
-  if (G.score > G.best) G.best = G.score;
+  bumpBest(COLS * cell / 2, cell * 6);
   G.flash = 1; G.shake = Math.max(G.shake, 0.8);
   Sfx.hard();
   lockPiece();
@@ -1126,6 +1196,9 @@ btnHard.addEventListener('click', () => {
 /* Blur buttons after click so Space/Enter never re-trigger them mid-game */
 document.addEventListener('click', (e) => { const b = e.target.closest('button'); if (b) b.blur(); });
 document.addEventListener('touchstart', markTouch, { passive: true, once: true });
+// iOS: create/resume the AudioContext on the very first touch anywhere
+document.addEventListener('touchend', () => Sfx.ensure(), { passive: true, once: true });
+document.addEventListener('pointerdown', () => Sfx.ensure(), { once: true });
 if (window.matchMedia('(pointer: coarse)').matches) document.body.classList.add('touch');
 
 /* ---------- Main loop ---------- */
@@ -1139,6 +1212,9 @@ function frame(now) {
   renderPanels();
   renderBg(dt, now);
   syncHud();
+  // music follows game state + mute (stops on pause / game over / hidden tab)
+  const wantMusic = G.state === 'playing' && !Sfx.muted && !document.hidden;
+  if (wantMusic !== Music.on) { wantMusic ? Music.start() : Music.stop(); }
   requestAnimationFrame(frame);
 }
 

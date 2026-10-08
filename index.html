@@ -11,10 +11,12 @@
   <title>Amal's Games</title>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎮</text></svg>" />
   <script src="./shared/arcade.js"></script>
+  <script src="./shared/sound.js"></script>
   <style>
     .whobar { position: relative; z-index: 2; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; justify-content: center; margin: -6px 0 18px; }
-    .whobar .arc-chip { font-size: 1.05rem; padding: 12px 18px; border-color: var(--sun); }
-    .whobar a { color: #e9e4ff; font-weight: 900; text-decoration: none; padding: 10px 16px; border-radius: 999px; background: rgba(255,255,255,.08); border: 2px solid var(--edge); }
+    .whobar .arc-chip { font-size: 1.05rem; padding: 10px 18px; border-color: var(--sun); }
+    .whobar a, .whobar .sndbtn { display: inline-flex; align-items: center; min-height: 44px; color: #e9e4ff; font-weight: 900; font-size: 1rem; font-family: inherit; text-decoration: none; padding: 8px 16px; border-radius: 999px; background: rgba(255,255,255,.08); border: 2px solid var(--edge); cursor: pointer; white-space: nowrap; }
+    .whobar .sndbtn[aria-pressed="false"] { opacity: .7; }
     :root {
       --bg1: #120a2e; --bg2: #2a1468; --bg3: #0b3b5e;
       --ink: #ffffff; --muted: #b9b4e3;
@@ -42,10 +44,10 @@
     @keyframes twinkle { 50% { opacity: 1; transform: scale(1.6); } }
     .orb { position: absolute; border-radius: 50%; filter: blur(60px); opacity: .45; animation: drift 14s ease-in-out infinite alternate; }
     @keyframes drift { to { transform: translate(40px, -30px) scale(1.1); } }
-    .floaty { position: absolute; font-size: 2.4rem; opacity: .55; animation: bob 7s ease-in-out infinite; filter: drop-shadow(0 6px 10px rgba(0,0,0,.4)); }
+    .floaty { position: absolute; font-size: 2.4rem; opacity: .35; animation: bob 7s ease-in-out infinite; filter: drop-shadow(0 6px 10px rgba(0,0,0,.4)); }
     @keyframes bob { 0%,100% { transform: translateY(0) rotate(-6deg); } 50% { transform: translateY(-22px) rotate(6deg); } }
 
-    .wrap { position: relative; z-index: 1; max-width: 1180px; margin: 0 auto; padding: clamp(18px, 4vw, 44px) 20px 70px; }
+    .wrap { position: relative; z-index: 1; max-width: 1180px; margin: 0 auto; padding: clamp(18px, 4vw, 44px) max(20px, env(safe-area-inset-right)) calc(70px + env(safe-area-inset-bottom)) max(20px, env(safe-area-inset-left)); }
 
     /* ---------- hero ---------- */
     .hero { text-align: center; padding: 10px 0 30px; }
@@ -65,14 +67,15 @@
 
     /* ---------- filter chips ---------- */
     .chips { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; margin: 10px 0 26px; }
-    .chip { padding: 10px 18px; border-radius: 999px; font-weight: 800; background: rgba(255,255,255,.08); border: 2px solid var(--edge); color: #e9e4ff; cursor: pointer; font-size: .95rem; transition: transform .15s, background .15s; font-family: inherit; }
+    .chip { min-height: 44px; padding: 8px 18px; border-radius: 999px; font-weight: 800; background: rgba(255,255,255,.08); border: 2px solid var(--edge); color: #e9e4ff; cursor: pointer; font-size: .95rem; transition: transform .15s, background .15s; font-family: inherit; -webkit-tap-highlight-color: transparent; }
     .chip:hover { transform: translateY(-2px); }
     .chip.on { background: #fff; color: #2a1468; border-color: #fff; }
 
     /* ---------- game grid ---------- */
     .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); gap: 22px; }
     .game { position: relative; display: flex; flex-direction: column; border-radius: 28px; overflow: hidden; text-decoration: none; color: inherit;
-      background: var(--card); border: 2px solid var(--edge); box-shadow: var(--shadow); transition: transform .18s ease, box-shadow .18s ease, border-color .18s; }
+      /* near-opaque so the floating background emojis never show through the card body */
+      background: linear-gradient(180deg, rgba(255,255,255,.09), rgba(255,255,255,.04)), #1c1150; border: 2px solid var(--edge); box-shadow: var(--shadow); transition: transform .18s ease, box-shadow .18s ease, border-color .18s; }
     .game:hover, .game:focus-visible { transform: translateY(-8px) scale(1.01); border-color: rgba(255,255,255,.4); box-shadow: 0 26px 60px rgba(0,0,0,.5); outline: none; }
     .game.hidden { display: none; }
     .art { position: relative; height: 190px; overflow: hidden; display: grid; place-items: center; }
@@ -119,6 +122,11 @@
     footer { text-align: center; color: var(--muted); margin-top: 44px; font-weight: 700; line-height: 1.7; font-size: .95rem; }
     footer b { color: #fff; }
 
+    .ideas-banner, .tip { background-color: rgba(28,17,80,.85); }
+    @media (max-width: 480px) {
+      .ideas-banner { flex-wrap: wrap; padding: 16px; } .ideas-banner .ib-go { margin-left: 0; width: 100%; text-align: center; padding: 12px; }
+      .hero { padding-bottom: 20px; } .hero-art { border-radius: 20px; }
+    }
     @media (prefers-reduced-motion: reduce) { .star, .orb, .floaty, .avatar-row span, .art .mini, .badge .dot { animation: none; } }
   </style>
 </head>
@@ -272,6 +280,8 @@
     const wb = document.getElementById('whobar');
     wb.appendChild(Arcade.chip());
     wb.insertAdjacentHTML('beforeend', '<a href="./stats/index.html">🏆 Stats & Leaderboards</a><a href="./ideas/index.html">💡 Ideas</a>');
+    wb.appendChild(Sound.toggleButton('sndbtn'));
+    Sound.wire();
     // filter chips
     const chips = document.querySelectorAll('.chip');
     const cards = document.querySelectorAll('.game');
