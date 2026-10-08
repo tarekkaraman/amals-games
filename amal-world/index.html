@@ -60,6 +60,7 @@
   .pill.timer { color: var(--sky); }
   .pill.timer.good { color: var(--mint); }
   .pill b { display: inline-block; }
+  .pill .ico { width: 20px; height: 20px; object-fit: contain; margin: -4px 0; filter: drop-shadow(0 1px 1px rgba(0,0,0,.4)); }
   .pill b.pop { animation: statpop .35s ease; }
   @keyframes statpop { 40% { transform: scale(1.4); } }
   .topbtns { display: flex; gap: 6px; margin-left: auto; }
@@ -217,8 +218,8 @@
   <header class="topbar">
     <a class="home" href="../">🏠 Amal's Games</a>
     <div class="hud">
-      <span class="pill coins" title="Coins">🪙 <b id="hudCoins">0</b>/<span id="hudCoinsTotal">0</span></span>
-      <span class="pill lives" title="Lives">❤️ <b id="hudLives">3</b></span>
+      <span class="pill coins" title="Coins"><img class="ico" src="../shared/items/coin.png" alt="Coins"> <b id="hudCoins">0</b>/<span id="hudCoinsTotal">0</span></span>
+      <span class="pill lives" title="Lives"><img class="ico" src="../shared/items/heart.png" alt="Lives"> <b id="hudLives">3</b></span>
       <span class="pill level" id="hudLevel">Amal World</span>
       <span class="pill timer" id="hudTimer">0:00.0</span>
     </div>
@@ -1357,6 +1358,35 @@ function bgImage(name) {
   if (!im) { im = bgImages[name] = new Image(); im.src = './art/' + name + '.jpg'; }
   return im.complete && im.naturalWidth > 0 ? im : null;
 }
+// Item art (shared/items/*.png, 512px). Each is loaded once at boot and pre-scaled to a 192px offscreen
+// canvas so per-frame draws are cheap; item(name) returns that canvas, or null (→ vector fallback) until it arrives.
+// ITEM_BOX = opaque bounding box of each PNG as fractions of its width (measured), used to size/anchor the art.
+const ITEM_BOX = {
+  coin:     { l: 0.219, t: 0.172, r: 0.779, b: 0.826 },
+  star:     { l: 0.123, t: 0.117, r: 0.873, b: 0.881 },
+  mushroom: { l: 0.227, t: 0.184, r: 0.795, b: 0.838 },
+  flag:     { l: 0.199, t: 0.098, r: 0.803, b: 0.900 },
+  spring:   { l: 0.180, t: 0.082, r: 0.818, b: 0.916 },
+};
+const ITEMS = {};
+for (const name of Object.keys(ITEM_BOX)) {
+  const im = new Image();
+  im.addEventListener('load', () => {
+    if (!(im.complete && im.naturalWidth > 0)) return;
+    const cv = document.createElement('canvas'); cv.width = cv.height = 192;
+    cv.getContext('2d').drawImage(im, 0, 0, 192, 192);
+    ITEMS[name] = cv;
+  });
+  im.src = '../shared/items/' + name + '.png';
+}
+const item = (name) => ITEMS[name] || null;
+/** Draw item art so its opaque box is `h` tall, horizontally centred on cx with its bottom edge at `bottom`. */
+function drawItem(name, cx, bottom, h) {
+  const cv = ITEMS[name], b = ITEM_BOX[name];
+  const d = h / (b.b - b.t);
+  ctx.drawImage(cv, cx - d * (b.l + b.r) / 2, bottom - d * b.b, d, d);
+}
+
 function drawBackground(th, cx, cy, lh) {
   const g = ctx.createLinearGradient(0, 0, 0, VIEW_H);
   g.addColorStop(0, th.skyTop); g.addColorStop(1, th.skyBot);
@@ -1555,6 +1585,15 @@ function drawSpikes(x, y) {
 }
 function drawSpring(c, r, x, y, th) {
   const k = game.springs.get(c + ',' + r) || 0, sq = k > 0 ? 0.55 + 0.45 * (1 - k / 0.35) : 1;
+  if (item('spring')) {
+    // art spring: squash towards the tile floor on bounce (wider as it compresses)
+    ctx.save();
+    ctx.translate(x + T / 2, y + T); ctx.scale(1 + (1 - sq) * 0.35, sq);
+    ctx.fillStyle = 'rgba(0,0,0,.18)'; ctx.beginPath(); ctx.ellipse(0, 1, 15, 4, 0, 0, Math.PI * 2); ctx.fill();
+    drawItem('spring', 0, 0, 38);
+    ctx.restore();
+    return;
+  }
   const stemH = 16 * sq, capH = 20 * sq;
   ctx.fillStyle = '#f5e6c8'; rr(x + 13, y + T - stemH, 14, stemH, 4); ctx.fill();
   ctx.fillStyle = 'rgba(0,0,0,.18)'; rr(x + 1, y + T - stemH - capH + 6, T - 2, capH, 12); ctx.fill();
@@ -1567,6 +1606,7 @@ function drawCoin(c, r) {
   const sx = Math.abs(Math.cos(game.t * 3 + c * 0.6)) * 0.85 + 0.15;
   ctx.save(); ctx.translate(cx, cy); ctx.scale(sx, 1);
   ctx.fillStyle = 'rgba(0,0,0,.15)'; circle(0, 3, 13); ctx.fill();
+  if (item('coin')) { drawItem('coin', 0, 15, 30); ctx.restore(); return; }   // spin = the x-scale above
   const g = ctx.createRadialGradient(-4, -5, 2, 0, 0, 14); g.addColorStop(0, '#fff3b0'); g.addColorStop(0.5, '#ffd23f'); g.addColorStop(1, '#e09b14');
   ctx.fillStyle = g; circle(0, 0, 13); ctx.fill();
   ctx.strokeStyle = 'rgba(160,100,0,.55)'; ctx.lineWidth = 2; circle(0, 0, 8); ctx.stroke();
@@ -1578,6 +1618,14 @@ function drawBigStar(c, r) {
   ctx.save();
   ctx.globalAlpha = 0.35 + 0.15 * Math.sin(game.t * 3); ctx.fillStyle = '#ffd23f'; circle(cx, cy, 30); ctx.fill();
   ctx.globalAlpha = 1;
+  if (item('star')) {
+    // art star: gentle pulse + the same slow rock as the vector star
+    const pulse = 1 + 0.08 * Math.sin(game.t * 3);
+    ctx.translate(cx, cy); ctx.rotate(rot); ctx.scale(pulse, pulse);
+    drawItem('star', 0, 24, 48);
+    ctx.restore();
+    return;
+  }
   ctx.fillStyle = 'rgba(0,0,0,.2)'; starPath(cx, cy + 4, 22, 10, rot); ctx.fill();
   const g = ctx.createLinearGradient(cx, cy - 22, cx, cy + 22); g.addColorStop(0, '#fff3b0'); g.addColorStop(1, '#ffb020');
   ctx.fillStyle = g; starPath(cx, cy, 22, 10, rot); ctx.fill();
@@ -1587,6 +1635,17 @@ function drawBigStar(c, r) {
   ctx.restore();
 }
 function drawCheckpoint(x, y, active) {
+  if (item('flag')) {
+    // art flag, 2 tiles tall, pole base on the tile floor; sways gently, glows mint once reached
+    ctx.save();
+    ctx.fillStyle = '#5a5f73'; rr(x + 8, y + T - 7, 24, 7, 3); ctx.fill();
+    if (active) { ctx.globalAlpha = 0.35 + 0.12 * Math.sin(game.t * 4); ctx.fillStyle = '#3fe0a8'; circle(x + 30, y - T * 0.4, 30); ctx.fill(); ctx.globalAlpha = 1; }
+    else ctx.globalAlpha = 0.72;
+    ctx.translate(x + 12, y + T - 4); ctx.rotate(Math.sin(game.t * 5) * 0.035);
+    drawItem('flag', 18, 0, T * 2);
+    ctx.restore();
+    return;
+  }
   ctx.fillStyle = '#8b8fa3'; rr(x + 18, y - T, 4, T * 2, 2); ctx.fill();
   ctx.fillStyle = '#5a5f73'; rr(x + 10, y + T - 8, 20, 8, 3); ctx.fill();
   const wave = Math.sin(game.t * 6) * 3;
@@ -1598,6 +1657,14 @@ function drawGoal(x, y, th) {
   const top = y - T * 2.5;
   ctx.fillStyle = 'rgba(0,0,0,.15)'; rr(x + 4, y + T - 10, T - 2, 10, 4); ctx.fill();
   ctx.fillStyle = '#fef3c7'; rr(x + 2, y + T - 12, T - 4, 12, 5); ctx.fill();
+  if (item('flag')) {
+    // art goal flag: 3 tiles tall on the plinth, waving
+    ctx.save();
+    ctx.translate(x + 8, y + T - 10); ctx.rotate(Math.sin(game.t * 6) * 0.03);
+    drawItem('flag', 28, 0, T * 3);
+    ctx.restore();
+    return;
+  }
   ctx.fillStyle = '#9aa0b4'; rr(x + 17, top, 6, T * 3.5 - 12, 3); ctx.fill();
   ctx.fillStyle = '#ffd23f'; circle(x + 20, top, 6); ctx.fill();
   // waving flag
@@ -1677,8 +1744,17 @@ function drawEnemy(e, th) {
   ctx.save();
   ctx.globalAlpha = e.dying ? Math.max(0.2, sq) : 1;
   ctx.translate(cx, by);
-  ctx.scale((1 + (1 - sq) * 0.7) * (e.dir > 0 ? 1 : -1), sq);
   const bob = e.onGround && !e.dying ? Math.abs(Math.sin(e.anim * 8)) * 2 : 0;
+  if (item('mushroom')) {
+    // art grump (faces left in the PNG): flip to face its direction, bob while walking, squash flat when stomped
+    ctx.fillStyle = 'rgba(0,0,0,.18)'; ctx.beginPath(); ctx.ellipse(0, 1, 14 + (1 - sq) * 8, 4, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.scale((1 + (1 - sq) * 0.7) * (e.dir > 0 ? -1 : 1), sq);
+    ctx.rotate(e.onGround && !e.dying ? Math.sin(e.anim * 8) * 0.06 : 0);
+    drawItem('mushroom', 0, -bob, 33);
+    ctx.restore();
+    return;
+  }
+  ctx.scale((1 + (1 - sq) * 0.7) * (e.dir > 0 ? 1 : -1), sq);
   // feet
   ctx.fillStyle = th.enemyDark;
   rr(-12 + Math.sin(e.anim * 8) * 3, -5, 9, 5, 2.5); ctx.fill(); rr(3 - Math.sin(e.anim * 8) * 3, -5, 9, 5, 2.5); ctx.fill();

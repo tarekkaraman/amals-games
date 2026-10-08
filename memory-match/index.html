@@ -130,6 +130,11 @@ body.on-start .stats,body.on-start #btnPause{visibility:hidden}
   border:2px solid rgba(255,255,255,.28);
   box-shadow:0 10px 24px rgba(0,0,0,.35), inset 0 -4px 10px rgba(0,0,0,.25), inset 0 2px 0 rgba(255,255,255,.35)
 }
+/* subtle star watermark (shared/items/star.png) under the shine */
+.card .back::before{
+  content:"";position:absolute;inset:12%;background:url(../shared/items/star.png) center/contain no-repeat;opacity:.1;pointer-events:none;
+  filter:brightness(3) saturate(0)   /* white star so the 10% watermark reads on every theme colour */
+}
 .card .back::after{
   content:"";width:38%;height:38%;border-radius:50%;
   background:radial-gradient(circle at 35% 35%,rgba(255,255,255,.55),rgba(255,255,255,.08) 60%,transparent 70%);
@@ -271,6 +276,9 @@ body:not(.kb) .card.kfocus::before{display:none}
 .float{position:fixed;z-index:14;pointer-events:none;transform:translate(-50%,-50%);font-weight:900;font-size:1.15rem;color:#fff;
   text-shadow:0 2px 0 rgba(0,0,0,.45),0 0 14px rgba(255,209,102,.6);white-space:nowrap;animation:floatUp 1s ease-out forwards}
 .float.big{font-size:1.6rem;color:var(--gold)}
+/* "pair found": little star.png sparks fly out of the matched cards */
+.spark{position:fixed;z-index:14;pointer-events:none;width:22px;height:22px;transform:translate(-50%,-50%);filter:drop-shadow(0 0 6px rgba(255,209,102,.8));animation:spark .7s ease-out forwards}
+@keyframes spark{0%{opacity:1;transform:translate(-50%,-50%) scale(.4)}30%{opacity:1;transform:translate(calc(-50% + var(--dx) * .5),calc(-50% + var(--dy) * .5)) scale(1.1) rotate(90deg)}100%{opacity:0;transform:translate(calc(-50% + var(--dx)),calc(-50% + var(--dy))) scale(.3) rotate(200deg)}}
 @keyframes floatUp{0%{opacity:0;transform:translate(-50%,-30%) scale(.6)}20%{opacity:1;transform:translate(-50%,-60%) scale(1.15)}100%{opacity:0;transform:translate(-50%,-160%) scale(1)}}
 .stat b.pop{animation:statpop .35s ease}
 @keyframes statpop{40%{transform:scale(1.35)}}
@@ -664,6 +672,19 @@ function floatText(el, text, big) {
   document.body.appendChild(f); setTimeout(() => f.remove(), 1000);
 }
 function flash() { const f = $('flash'); f.classList.remove('go'); void f.offsetWidth; f.classList.add('go'); }
+/* star.png burst from a matched card (loaded once at boot; silently skipped if the art never arrives) */
+const starImg = new Image(); starImg.src = '../shared/items/star.png';
+function starBurst(el) {
+  if (reducedMotion || !(starImg.complete && starImg.naturalWidth > 0)) return;
+  const r = el.getBoundingClientRect(), cx = r.left + r.width / 2, cy = r.top + r.height / 2, d = Math.max(36, r.width * 0.9);
+  for (let i = 0; i < 6; i++) {
+    const a = (i / 6) * Math.PI * 2 + Math.random() * 0.6;
+    const s = document.createElement('img'); s.className = 'spark'; s.src = starImg.src; s.alt = '';
+    s.style.left = cx + 'px'; s.style.top = cy + 'px';
+    s.style.setProperty('--dx', Math.cos(a) * d + 'px'); s.style.setProperty('--dy', Math.sin(a) * d + 'px');
+    document.body.appendChild(s); setTimeout(() => s.remove(), 750);
+  }
+}
 function popStat(id) { const b = $(id); b.classList.remove('pop'); void b.offsetWidth; b.classList.add('pop'); }
 
 /* ---------------- Layout: fit the grid to the available area ---------------- */
@@ -804,7 +825,7 @@ function compare() {
       if (G.mode === 2) G.scores[G.player]++;
       audio.match(); updateTwist();
       // juice: flash, "+1 pair" float, streak counter with rising jingle
-      flash(); floatText(b.el, G.mode === 2 ? `+1 P${G.player + 1}` : '+1 pair');
+      flash(); starBurst(a.el); starBurst(b.el); floatText(b.el, G.mode === 2 ? `+1 P${G.player + 1}` : '+1 pair');
       if (G.streak >= 2) { floatText(a.el, `🔥 ${G.streak} in a row!`, true); audio.streak(G.streak); if (G.streak >= 3) confetti.burst(20 + G.streak * 8); }
       G.lock = false;
       if (G.matchedPairs === G.def.pairs) finish();

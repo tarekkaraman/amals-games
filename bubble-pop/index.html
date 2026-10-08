@@ -401,6 +401,12 @@ const COLORS = [
 
 const bgImg = new Image();               // underwater grotto backdrop; gradient shows until it loads
 bgImg.src = 'art/bg.jpg';
+// Shared glossy white bubble (shared/items/bubble.png), tinted per colour in buildSprites();
+// the procedural gradient bubble stays as the fallback until it loads.
+const BUBBLE_FILL = 0.969;               // fraction of the image's width the sphere covers
+const bubbleImg = new Image();
+bubbleImg.src = '../shared/items/bubble.png';
+bubbleImg.addEventListener('load', () => buildSprites());
 
 /** Difficulty curve per level. Levels 10–12 are 🔥 (all colours, lower ceiling, faster drop); 13+ repeat 12. */
 const HARD_FROM = 10;
@@ -617,6 +623,19 @@ function buildSprites() {
     const x = c.getContext('2d');
     x.setTransform(dpr, 0, 0, dpr, 0, 0);
     const cx = (R * 2 + 6) / 2, cy = cx;
+    if (bubbleImg.complete && bubbleImg.naturalWidth > 0) {
+      // art bubble: draw white sphere → multiply with the colour → destination-in to restore its alpha
+      const d = R * 2 / BUBBLE_FILL;
+      x.drawImage(bubbleImg, cx - d / 2, cy - d / 2, d, d);
+      x.globalCompositeOperation = 'multiply'; x.fillStyle = col.base; x.fillRect(0, 0, R * 2 + 6, R * 2 + 6);
+      x.globalCompositeOperation = 'destination-in'; x.drawImage(bubbleImg, cx - d / 2, cy - d / 2, d, d);
+      x.globalCompositeOperation = 'source-over';
+      x.save();
+      x.translate(cx, cy + R * 0.05);
+      drawSymbol(x, col.sym, R * 0.4, 'rgba(255,255,255,0.92)', col.dark);
+      x.restore();
+      return c;
+    }
     // body
     const g = x.createRadialGradient(cx - R * 0.35, cy - R * 0.4, R * 0.1, cx, cy, R);
     g.addColorStop(0, col.light);

@@ -347,6 +347,27 @@ for (const t of TYPES) {
   };
 }
 
+/* ---------- Item art: shared/items/block.png (white glossy tile) tinted once per piece colour at boot.
+   Tint = draw tile → multiply with the colour → destination-in with the tile to restore alpha.
+   Until it loads (or if it never does) the vector drawCell() below is the fallback. ---------- */
+const BLOCK_FILL = 0.748;                      // fraction of block.png's width the tile itself covers
+const blockImg = new Image();
+blockImg.src = '../shared/items/block.png';
+const tintedBlocks = {};                       // type -> offscreen canvas
+blockImg.addEventListener('load', () => {
+  if (!(blockImg.complete && blockImg.naturalWidth > 0)) return;
+  const S = 160;
+  for (const t of TYPES) {
+    const c = document.createElement('canvas'); c.width = c.height = S;
+    const x = c.getContext('2d');
+    x.drawImage(blockImg, 0, 0, S, S);
+    x.globalCompositeOperation = 'multiply'; x.fillStyle = PIECES[t].col.base; x.fillRect(0, 0, S, S);
+    x.globalCompositeOperation = 'destination-in'; x.drawImage(blockImg, 0, 0, S, S);
+    tintedBlocks[t] = c;
+  }
+  spriteCache.clear();
+});
+
 /* ---------- Sound (Web Audio synthesis only) ---------- */
 const Sfx = (() => {
   let ac = null, master = null;
@@ -875,7 +896,12 @@ function getSprite(type, size) {
     spr.width = Math.max(1, Math.round(size * dpr)); spr.height = spr.width;
     const sc = spr.getContext('2d');
     sc.setTransform(dpr, 0, 0, dpr, 0, 0);
-    drawCell(sc, 0, 0, size, PIECES[type].col);
+    const tile = tintedBlocks[type];
+    if (tile) {
+      // scale so the tile covers the cell minus the same 6% inset the vector block uses
+      const d = size * 0.88 / BLOCK_FILL, o = (size - d) / 2;
+      sc.drawImage(tile, o, o, d, d);
+    } else drawCell(sc, 0, 0, size, PIECES[type].col);
     spriteCache.set(key, spr);
   }
   return spr;
