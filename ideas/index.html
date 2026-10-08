@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#1a0b3d" />
+  <title>Amal's Ideas · Amal's Games</title>
+  <style>
+    :root { --bg1:#120a2e; --bg2:#2a1468; --ink:#fff; --muted:#b9b4e3; --sun:#ffd23f; --coral:#ff5d8f; --mint:#3fe0a8; --sky:#4cc9f0; --violet:#9b5cff;
+      --card:rgba(255,255,255,.08); --edge:rgba(255,255,255,.16); --shadow:0 16px 40px rgba(0,0,0,.35); }
+    * { box-sizing:border-box; margin:0; padding:0; }
+    body { font-family:"SF Pro Rounded", ui-rounded, "Segoe UI", system-ui, sans-serif; color:var(--ink); min-height:100vh;
+      background: radial-gradient(120% 90% at 20% 0%, var(--bg2), transparent 60%), radial-gradient(90% 80% at 100% 100%, #0b3b5e, transparent 60%), var(--bg1); background-attachment:fixed; }
+    .wrap { max-width:900px; margin:0 auto; padding:clamp(16px,4vw,36px) 18px 80px; }
+    .top { display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:18px; }
+    .home { display:inline-flex; align-items:center; gap:8px; padding:12px 18px; border-radius:999px; background:var(--card); border:2px solid var(--edge); color:#fff; text-decoration:none; font-weight:900; }
+    h1 { font-size:clamp(2rem,8vw,3.4rem); font-weight:900; line-height:1; }
+    h1 span { background:linear-gradient(90deg,var(--sun),var(--coral)); -webkit-background-clip:text; background-clip:text; color:transparent; }
+    .sub { color:var(--muted); font-weight:700; margin-top:6px; }
+    .panel { background:var(--card); border:2px solid var(--edge); border-radius:26px; padding:20px; box-shadow:var(--shadow); margin-top:18px; }
+    .panel h2 { font-size:1.3rem; margin-bottom:12px; display:flex; align-items:center; gap:8px; }
+    label { display:block; font-size:.8rem; font-weight:900; letter-spacing:.1em; text-transform:uppercase; color:var(--muted); margin:10px 0 6px; }
+    input[type=text], textarea, select { width:100%; font:inherit; font-size:1.05rem; color:#fff; background:rgba(0,0,0,.3); border:2px solid var(--edge); border-radius:14px; padding:12px 14px; outline:none; }
+    input:focus, textarea:focus, select:focus { border-color:var(--sky); }
+    textarea { min-height:90px; resize:vertical; }
+    select option { color:#000; }
+    .emojis { display:flex; flex-wrap:wrap; gap:6px; }
+    .emojis button { font-size:1.5rem; width:46px; height:46px; border-radius:12px; background:rgba(0,0,0,.25); border:2px solid transparent; cursor:pointer; }
+    .emojis button.on { border-color:var(--sun); background:rgba(255,210,63,.18); }
+    .btn { font:inherit; font-weight:900; font-size:1.05rem; padding:13px 24px; border-radius:999px; border:none; cursor:pointer; color:#2a1468;
+      background:linear-gradient(180deg,#ffe066,#ffb703); box-shadow:0 5px 0 #c98a00; }
+    .btn.ghost { background:var(--card); color:#fff; box-shadow:none; border:2px solid var(--edge); }
+    .btn.mint { background:linear-gradient(180deg,#7ff0c8,var(--mint)); box-shadow:0 5px 0 #15a877; }
+    .btn:active { transform:translateY(2px); }
+    .row { display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-top:14px; }
+    .list { display:flex; flex-direction:column; gap:10px; }
+    .idea { display:grid; grid-template-columns:56px 1fr auto; gap:12px; align-items:start; background:rgba(0,0,0,.25); border:2px solid var(--edge); border-radius:18px; padding:12px 14px; }
+    .idea .ic { font-size:2rem; line-height:1; width:56px; height:56px; display:grid; place-items:center; border-radius:14px; background:rgba(255,255,255,.08); }
+    .idea .t { font-weight:900; font-size:1.05rem; }
+    .idea .m { color:var(--muted); font-size:.85rem; margin-top:2px; }
+    .idea .d { margin-top:6px; line-height:1.4; white-space:pre-wrap; }
+    .idea .acts { display:flex; flex-direction:column; gap:6px; }
+    .mini { font:inherit; font-weight:800; font-size:.8rem; padding:7px 10px; border-radius:10px; border:2px solid var(--edge); background:var(--card); color:#fff; cursor:pointer; }
+    .mini.done { border-color:var(--mint); color:var(--mint); }
+    .empty { color:var(--muted); text-align:center; padding:18px; font-weight:700; }
+    .stars { display:flex; gap:4px; }
+    .stars button { font-size:1.3rem; background:none; border:none; cursor:pointer; filter:grayscale(1) opacity(.4); }
+    .stars button.lit { filter:none; }
+    .games { display:grid; grid-template-columns:repeat(auto-fill,minmax(160px,1fr)); gap:10px; }
+    .game { background:rgba(0,0,0,.25); border:2px solid var(--edge); border-radius:16px; padding:12px; }
+    .game b { display:block; margin-bottom:6px; }
+    .toast { position:fixed; left:50%; bottom:22px; transform:translateX(-50%); background:#16204d; border:2px solid var(--sun); padding:12px 20px; border-radius:14px; font-weight:800; display:none; z-index:9; }
+    .count { font-size:.85rem; color:var(--muted); font-weight:800; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="top">
+      <a class="home" href="../">🏠 Amal's Games</a>
+      <div><h1><span>Amal's</span> Ideas 💡</h1><div class="sub">Tell Dad what to build next — new games, new levels, anything!</div></div>
+    </div>
+
+    <section class="panel">
+      <h2>✍️ Add an idea</h2>
+      <label>Pick an icon</label>
+      <div class="emojis" id="emojis"></div>
+      <label>What's the idea?</label>
+      <input type="text" id="title" placeholder="e.g. A unicorn racing game!" maxlength="80" />
+      <label>Which game is it for?</label>
+      <select id="game">
+        <option value="✨ New game">✨ A brand-new game</option>
+        <option>🏎️ Amal Turbo</option><option>🔍 Animal Spot!</option><option>🧩 Block Blitz</option><option>🫧 Bubble Pop</option>
+        <option>🏃 Amal World</option><option>🏙️ Dubai Dash</option><option>🦅 Falcon Flight</option><option>🚀 Sky Hop</option><option>🃏 Memory Match</option><option>🌐 The whole website</option>
+      </select>
+      <label>Tell me more (optional)</label>
+      <textarea id="desc" placeholder="Characters, colours, levels, what happens…"></textarea>
+      <label>How much do you want it?</label>
+      <div class="stars" id="want"></div>
+      <div class="row"><button class="btn" id="add">➕ Save idea</button><span class="count" id="count"></span></div>
+    </section>
+
+    <section class="panel">
+      <h2>📋 My ideas list</h2>
+      <div class="list" id="list"></div>
+      <div class="row">
+        <button class="btn mint" id="share">📤 Send list to Dad</button>
+        <button class="btn ghost" id="copy">📋 Copy list</button>
+        <button class="btn ghost" id="clearDone">🧹 Clear done</button>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>⭐ Rate the games</h2>
+      <div class="games" id="ratings"></div>
+    </section>
+  </div>
+  <div class="toast" id="toast"></div>
+
+  <script>
+    const KEY = 'amals-ideas-v1';
+    const GAMES = ['🏎️ Amal Turbo','🔍 Animal Spot!','🧩 Block Blitz','🫧 Bubble Pop','🏃 Amal World','🏙️ Dubai Dash','🦅 Falcon Flight','🚀 Sky Hop','🃏 Memory Match'];
+    const EMOJIS = ['💡','🎮','🦄','🐉','🚀','🏎️','🐱','🧜‍♀️','🍭','🏰','🌈','⚽','🎨','🧩','🦋','🌙','🍕','🎵','🏝️','🤖'];
+    let state = load();
+    function load(){ try { return JSON.parse(localStorage.getItem(KEY)) || { ideas:[], ratings:{} }; } catch { return { ideas:[], ratings:{} }; } }
+    function save(){ try { localStorage.setItem(KEY, JSON.stringify(state)); } catch {} }
+    const $ = (s) => document.querySelector(s);
+    let emoji = '💡', want = 3;
+
+    // emoji picker
+    const em = $('#emojis');
+    EMOJIS.forEach(e => { const b=document.createElement('button'); b.textContent=e; b.type='button'; if(e===emoji) b.classList.add('on');
+      b.onclick=()=>{ emoji=e; em.querySelectorAll('button').forEach(x=>x.classList.remove('on')); b.classList.add('on'); }; em.appendChild(b); });
+    // want stars
+    const ws = $('#want');
+    const renderWant=()=>{ ws.innerHTML=''; for(let i=1;i<=5;i++){ const b=document.createElement('button'); b.type='button'; b.textContent='⭐'; if(i<=want) b.classList.add('lit'); b.onclick=()=>{want=i;renderWant();}; ws.appendChild(b);} };
+    renderWant();
+
+    $('#add').onclick = () => {
+      const title = $('#title').value.trim(); if(!title){ toast('Type your idea first 😊'); $('#title').focus(); return; }
+      state.ideas.unshift({ id: Date.now(), emoji, title, game: $('#game').value, desc: $('#desc').value.trim(), want, done:false, date: new Date().toLocaleDateString() });
+      save(); $('#title').value=''; $('#desc').value=''; want=3; renderWant(); render(); toast('Saved! ✨');
+    };
+
+    function render(){
+      const list=$('#list'); list.innerHTML='';
+      if(!state.ideas.length){ list.innerHTML='<div class="empty">No ideas yet — add your first one above! 🚀</div>'; }
+      state.ideas.forEach(i => {
+        const el=document.createElement('div'); el.className='idea';
+        el.innerHTML = `<div class="ic">${i.emoji}</div><div><div class="t">${esc(i.title)}${i.done?' ✅':''}</div><div class="m">${esc(i.game)} · ${'⭐'.repeat(i.want)} · ${i.date}</div>${i.desc?`<div class="d">${esc(i.desc)}</div>`:''}</div>
+          <div class="acts"><button class="mini ${i.done?'done':''}" data-done>${i.done?'Done ✓':'Mark done'}</button><button class="mini" data-del>Delete</button></div>`;
+        el.querySelector('[data-done]').onclick=()=>{ i.done=!i.done; save(); render(); };
+        el.querySelector('[data-del]').onclick=()=>{ if(confirm('Delete this idea?')){ state.ideas=state.ideas.filter(x=>x.id!==i.id); save(); render(); } };
+        list.appendChild(el);
+      });
+      $('#count').textContent = state.ideas.length ? `${state.ideas.length} idea${state.ideas.length>1?'s':''} saved on this device` : '';
+      // ratings
+      const r=$('#ratings'); r.innerHTML='';
+      GAMES.forEach(g => { const d=document.createElement('div'); d.className='game'; const cur=state.ratings[g]||0;
+        d.innerHTML=`<b>${g}</b><div class="stars">${[1,2,3,4,5].map(n=>`<button type="button" class="${n<=cur?'lit':''}" data-n="${n}">⭐</button>`).join('')}</div>`;
+        d.querySelectorAll('button').forEach(b=>b.onclick=()=>{ state.ratings[g]=+b.dataset.n; save(); render(); }); r.appendChild(d); });
+    }
+    function listText(){
+      const lines = ["Amal's ideas for Amal's Games 💡", ''];
+      state.ideas.forEach((i,n)=> lines.push(`${n+1}. ${i.emoji} ${i.title} [${i.game}] ${'⭐'.repeat(i.want)}${i.done?' (done)':''}${i.desc?'\n   '+i.desc:''}`));
+      const rated = Object.entries(state.ratings); if(rated.length){ lines.push('', 'Game ratings:'); rated.forEach(([g,v])=>lines.push(`- ${g}: ${'⭐'.repeat(v)}`)); }
+      return lines.join('\n');
+    }
+    $('#share').onclick = async () => {
+      if(!state.ideas.length){ toast('Add an idea first!'); return; }
+      const text=listText();
+      if(navigator.share){ try{ await navigator.share({ title:"Amal's ideas", text }); return; }catch{} }
+      location.href = 'mailto:?subject=' + encodeURIComponent("Amal's game ideas") + '&body=' + encodeURIComponent(text);
+    };
+    $('#copy').onclick = async () => { try{ await navigator.clipboard.writeText(listText()); toast('Copied! 📋'); }catch{ toast('Could not copy'); } };
+    $('#clearDone').onclick = () => { state.ideas=state.ideas.filter(i=>!i.done); save(); render(); };
+    function esc(s){ return String(s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+    let tt; function toast(m){ const t=$('#toast'); t.textContent=m; t.style.display='block'; clearTimeout(tt); tt=setTimeout(()=>t.style.display='none',2000); }
+    render();
+  </script>
+</body>
+</html>

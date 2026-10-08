@@ -98,6 +98,12 @@
     .art.bubble { background: linear-gradient(160deg, #063d4e, #0b7a8c 55%, #3fe0a8); }
     .art.world  { background: linear-gradient(160deg, #ff9f1c, #ff5d8f 55%, #9b5cff); }
 
+    .ideas-banner { margin-top: 26px; display: flex; align-items: center; gap: 16px; padding: 18px 22px; border-radius: 24px; text-decoration: none; color: #fff;
+      background: linear-gradient(120deg, rgba(255,210,63,.18), rgba(255,93,143,.18)); border: 2px solid rgba(255,210,63,.45); box-shadow: var(--shadow); transition: transform .18s; }
+    .ideas-banner:hover { transform: translateY(-4px); }
+    .ideas-banner .ib-ico { font-size: 2.6rem; }
+    .ideas-banner b { font-size: 1.25rem; } .ideas-banner small { color: var(--muted); font-weight: 700; }
+    .ideas-banner .ib-go { margin-left: auto; font-weight: 900; padding: 10px 18px; border-radius: 999px; background: var(--sun); color: #2a1468; white-space: nowrap; }
     /* ---------- how it works strip ---------- */
     .strip { margin-top: 44px; display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; }
     .tip { background: rgba(255,255,255,.07); border: 2px solid var(--edge); border-radius: 20px; padding: 16px 18px; display: flex; gap: 12px; align-items: center; }
@@ -212,7 +218,66 @@
         </div>
       </a>
 
+      <a class="game" href="./dubai-dash/index.html" data-type="racing" aria-label="Play Dubai Dash">
+        <div class="art" style="background:url('./dubai-dash/art/hero.jpg') center/cover, linear-gradient(160deg,#2a1468,#ff7a2f 60%,#ffd23f)">
+          <span class="pill">New! · 3D Runner</span>
+        </div>
+        <div class="body">
+          <div class="title"><h2>Dubai Dash</h2><span class="age">Ages 7+</span></div>
+          <p class="desc">Sprint through Dubai in 3D — past the Burj, the Palm and the Frame! Swipe to dodge, jump and slide, grab gold, unlock Dana, Saqr the falcon and Jamal the camel.</p>
+          <div class="how"><span>👈👉 Swipe to change lane</span><span>👆 Swipe up to jump</span><span>🪙 Collect gold</span></div>
+          <div class="cta"><span class="play">Run ▶</span><span class="meta">Endless · missions</span></div>
+        </div>
+      </a>
+
+      <a class="game" href="./falcon-flight/index.html" data-type="adventure" aria-label="Play Falcon Flight">
+        <div class="art" style="background:linear-gradient(160deg,#ffb703,#ff5d8f 55%,#5a1e8a)">
+          <span class="pill">One-tap Flyer</span>
+          <span class="mini m1">🏙️</span><span class="mini m2">🌴</span><span class="mini m3">🪙</span><span class="mini m4">🛡️</span>
+          <span class="big">🦅</span>
+        </div>
+        <div class="body">
+          <div class="title"><h2>Falcon Flight</h2><span class="age">Ages 6+</span></div>
+          <p class="desc">Tap to flap a brave falcon over the Dubai skyline. Slip through the gaps, grab coins and power-ups, and complete daily missions.</p>
+          <div class="how"><span>👆 Tap to flap</span><span>🪙 Coins & missions</span></div>
+          <div class="cta"><span class="play">Play ▶</span><span class="meta">Endless · 4 stages</span></div>
+        </div>
+      </a>
+
+      <a class="game" href="./sky-hop/index.html" data-type="adventure" aria-label="Play Sky Hop">
+        <div class="art" style="background:linear-gradient(160deg,#4cc9f0,#9b5cff 60%,#120a2e)">
+          <span class="pill">Jump Higher</span>
+          <span class="mini m1">☁️</span><span class="mini m2">🚀</span><span class="mini m3">🪙</span><span class="mini m4">⭐</span>
+          <span class="big">🐱</span>
+        </div>
+        <div class="body">
+          <div class="title"><h2>Sky Hop</h2><span class="age">Ages 6+</span></div>
+          <p class="desc">Bounce from platform to platform all the way to space! Catch springs and jetpacks, dodge monsters, and see how high you can go.</p>
+          <div class="how"><span>⬅️➡️ Tilt or steer</span><span>🚀 Power-ups</span></div>
+          <div class="cta"><span class="play">Play ▶</span><span class="meta">Endless · 4 zones</span></div>
+        </div>
+      </a>
+
+      <a class="game" href="./memory-match/index.html" data-type="brain" aria-label="Play Memory Match">
+        <div class="art" style="background:linear-gradient(160deg,#3fe0a8,#4cc9f0 55%,#2a1468)">
+          <span class="pill">Brain Trainer</span>
+          <span class="mini m1">🐼</span><span class="mini m2">🚀</span><span class="mini m3">🍕</span><span class="mini m4">🕌</span>
+          <span class="big">🃏</span>
+        </div>
+        <div class="body">
+          <div class="title"><h2>Memory Match</h2><span class="age">Ages 6+</span></div>
+          <p class="desc">Flip the cards and find the pairs. Six theme packs, bigger grids every level, and a 2-player mode to challenge Dad.</p>
+          <div class="how"><span>👆 Flip two cards</span><span>⭐ 3 stars per level</span><span>👫 2-player</span></div>
+          <div class="cta"><span class="play">Play ▶</span><span class="meta">6 packs · levels</span></div>
+        </div>
+      </a>
     </main>
+
+    <a class="ideas-banner" href="./ideas/index.html">
+      <span class="ib-ico">💡</span>
+      <span><b>Amal's Ideas</b><br /><small>Got an idea for a new game or level? Write it here and send it to Dad!</small></span>
+      <span class="ib-go">Open ▶</span>
+    </a>
 
     <section class="strip" aria-label="Tips">
       <div class="tip"><span class="ico">🏠</span><div><b>Always a way home</b><small>Every game has a 🏠 button to bring you back here.</small></div></div>
