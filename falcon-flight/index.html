@@ -7,6 +7,7 @@
 <meta name="description" content="Falcon Flight — tap to flap a brave falcon over the Dubai skyline at golden hour. Part of Amal's Games.">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <title>Falcon Flight · Amal's Games</title>
+<script src="../shared/arcade.js"></script>
 <style>
   /* ------------------------------------------------------------------
      Falcon Flight — page chrome. Everything in the game world is drawn
@@ -78,6 +79,9 @@
   }
   .home:hover { background: var(--glass-strong); }
   .home:active { transform: scale(0.97); }
+  .topbar .arc-chip { padding: 6px 10px; font-size: 13px; background: rgba(255, 255, 255, 0.1); border-color: var(--line); }
+  .playing { color: var(--muted); font-weight: 700; font-size: 14px; margin: 6px 0 2px; }
+  .playing b { color: var(--ink); }
   .stats { display: flex; gap: 6px; flex: 1; justify-content: center; min-width: 0; }
   .stat {
     display: flex; flex-direction: column; align-items: center;
@@ -262,6 +266,7 @@
       <div class="eyebrow">Amal's Games presents</div>
       <h1>Falcon Flight</h1>
       <div class="sub">Soar over Dubai at golden hour</div>
+      <div class="playing">Playing as <b id="startPlayer">…</b></div>
       <div class="howto">
         <div class="how"><div class="ic">👆</div><div class="t">Tap to flap</div><div class="d">Space or ↑ works too</div></div>
         <div class="how"><div class="ic">🏙️</div><div class="t">Fly the gaps</div><div class="d">+1 for every tower</div></div>
@@ -328,8 +333,10 @@
    Storage helpers (all keys prefixed "falconflight-")
    ================================================================== */
 const LS = 'falconflight-';
-const lsGet = (k, d) => { try { const v = localStorage.getItem(LS + k); return v === null ? d : JSON.parse(v); } catch (e) { return d; } };
-const lsSet = (k, v) => { try { localStorage.setItem(LS + k, JSON.stringify(v)); } catch (e) { /* private mode etc. */ } };
+const GAME_ID = 'falcon-flight';
+const K = (k) => (window.Arcade ? Arcade.key(k) : k);   // per-player namespaced key
+const lsGet = (k, d) => { try { const v = localStorage.getItem(K(LS + k)); return v === null ? d : JSON.parse(v); } catch (e) { return d; } };
+const lsSet = (k, v) => { try { localStorage.setItem(K(LS + k), JSON.stringify(v)); } catch (e) { /* private mode etc. */ } };
 
 /* ==================================================================
    DOM
@@ -716,6 +723,11 @@ function endRun() {
   $('newBest').classList.toggle('show', isBest && score > 0);
   $('overEyebrow').textContent = isBest && score > 0 ? 'Incredible!' : score >= 20 ? 'Brilliant flying!' : score >= 10 ? 'Great flight!' : score >= 3 ? 'Nice try!' : 'Every falcon starts somewhere';
   renderMissions($('missionList2'), $('missionCount2'));
+  if (window.Arcade) {
+    Arcade.record(GAME_ID, score, { coins: runCoins });
+    const panel = ovOver.querySelector('.panel');
+    if (!panel.querySelector('.arc-rate')) panel.querySelector('.btns').before(Arcade.ratingWidget(GAME_ID));
+  }
   showOverlay(ovOver);
 }
 function pauseGame() {
@@ -1445,6 +1457,23 @@ if (window.visualViewport) window.visualViewport.addEventListener('resize', resi
    Boot
    ================================================================== */
 hudBest.textContent = best; hudCoins.textContent = bank;
+if (window.Arcade) {
+  const paintPlayer = () => { $('startPlayer').textContent = Arcade.emoji() + ' ' + Arcade.profile(); };
+  paintPlayer();
+  document.querySelector('.topbar .home').after(Arcade.chip());
+  document.addEventListener('arcade:profile', () => {
+    paintPlayer();
+    // Not mid-flight: reload so best, coins, missions and trails reflect the new player.
+    if (state === 'start' || state === 'over') { location.reload(); return; }
+    // Mid-flight: re-read the new player's saves so this run is banked under their name.
+    best = lsGet('best', 0); bank = lsGet('coins', 0);
+    unlockedTrails = lsGet('trails', []); currentTrail = lsGet('trail', 'classic');
+    const m = lsGet('missions', null);
+    missions = (m && m.date === todayKey()) ? m : { date: todayKey(), ids: pickMissions(todayKey()), progress: [0, 0, 0], claimed: false };
+    hudBest.textContent = best; hudCoins.textContent = bank;
+  });
+  Arcade.require(GAME_ID);
+}
 resize();
 goStart();
 requestAnimationFrame(frame);

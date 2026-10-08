@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <meta name="theme-color" content="#1a0b3d" />
   <title>Amal's Ideas · Amal's Games</title>
+  <script src="../shared/arcade.js"></script>
   <style>
     :root { --bg1:#120a2e; --bg2:#2a1468; --ink:#fff; --muted:#b9b4e3; --sun:#ffd23f; --coral:#ff5d8f; --mint:#3fe0a8; --sky:#4cc9f0; --violet:#9b5cff;
       --card:rgba(255,255,255,.08); --edge:rgba(255,255,255,.16); --shadow:0 16px 40px rgba(0,0,0,.35); }
@@ -58,6 +59,7 @@
     <div class="top">
       <a class="home" href="../">🏠 Amal's Games</a>
       <div><h1><span>Amal's</span> Ideas 💡</h1><div class="sub">Tell Dad what to build next — new games, new levels, anything!</div></div>
+      <span id="chip" style="margin-left:auto"></span>
     </div>
 
     <section class="panel">
@@ -97,13 +99,15 @@
   <div class="toast" id="toast"></div>
 
   <script>
-    const KEY = 'amals-ideas-v1';
-    const GAMES = ['🏎️ Amal Turbo','🔍 Animal Spot!','🧩 Block Blitz','🫧 Bubble Pop','🏃 Amal World','🏙️ Dubai Dash','🦅 Falcon Flight','🚀 Sky Hop','🃏 Memory Match'];
+    Arcade.require(false);
+    document.getElementById('chip').appendChild(Arcade.chip());
+    const GAMEIDS = { '🏎️ Amal Turbo':'amal-turbo','🔍 Animal Spot!':'animal-spot','🧩 Block Blitz':'block-blitz','🫧 Bubble Pop':'bubble-pop','🏃 Amal World':'amal-world','🏙️ Dubai Dash':'dubai-dash','🦅 Falcon Flight':'falcon-flight','🚀 Sky Hop':'sky-hop','🃏 Memory Match':'memory-match' };
+    const GAMES = Object.keys(GAMEIDS);
     const EMOJIS = ['💡','🎮','🦄','🐉','🚀','🏎️','🐱','🧜‍♀️','🍭','🏰','🌈','⚽','🎨','🧩','🦋','🌙','🍕','🎵','🏝️','🤖'];
-    let state = load();
-    function load(){ try { return JSON.parse(localStorage.getItem(KEY)) || { ideas:[], ratings:{} }; } catch { return { ideas:[], ratings:{} }; } }
-    function save(){ try { localStorage.setItem(KEY, JSON.stringify(state)); } catch {} }
+    let state = Arcade.ideas();
+    function save(){ Arcade.saveIdeas(state); }
     const $ = (s) => document.querySelector(s);
+    document.addEventListener('arcade:profile', () => render());
     let emoji = '💡', want = 3;
 
     // emoji picker
@@ -117,8 +121,9 @@
 
     $('#add').onclick = () => {
       const title = $('#title').value.trim(); if(!title){ toast('Type your idea first 😊'); $('#title').focus(); return; }
-      state.ideas.unshift({ id: Date.now(), emoji, title, game: $('#game').value, desc: $('#desc').value.trim(), want, done:false, date: new Date().toLocaleDateString() });
-      save(); $('#title').value=''; $('#desc').value=''; want=3; renderWant(); render(); toast('Saved! ✨');
+      state.ideas.unshift({ id: Date.now(), who: Arcade.profile(), emoji, title, game: $('#game').value, desc: $('#desc').value.trim(), want, done:false, date: new Date().toLocaleDateString() });
+      save(); Arcade.log({ type:'idea', game: GAMEIDS[$('#game').value] || 'hub', extra: title });
+      $('#title').value=''; $('#desc').value=''; want=3; renderWant(); render(); toast('Saved, ' + Arcade.profile() + '! ✨');
     };
 
     function render(){
@@ -126,23 +131,23 @@
       if(!state.ideas.length){ list.innerHTML='<div class="empty">No ideas yet — add your first one above! 🚀</div>'; }
       state.ideas.forEach(i => {
         const el=document.createElement('div'); el.className='idea';
-        el.innerHTML = `<div class="ic">${i.emoji}</div><div><div class="t">${esc(i.title)}${i.done?' ✅':''}</div><div class="m">${esc(i.game)} · ${'⭐'.repeat(i.want)} · ${i.date}</div>${i.desc?`<div class="d">${esc(i.desc)}</div>`:''}</div>
+        el.innerHTML = `<div class="ic">${i.emoji}</div><div><div class="t">${esc(i.title)}${i.done?' ✅':''}</div><div class="m">${Arcade.avatar(i.who||'Amal', 22)} ${esc(i.who||'Amal')} · ${esc(i.game)} · ${'⭐'.repeat(i.want)} · ${i.date}</div>${i.desc?`<div class="d">${esc(i.desc)}</div>`:''}</div>
           <div class="acts"><button class="mini ${i.done?'done':''}" data-done>${i.done?'Done ✓':'Mark done'}</button><button class="mini" data-del>Delete</button></div>`;
         el.querySelector('[data-done]').onclick=()=>{ i.done=!i.done; save(); render(); };
         el.querySelector('[data-del]').onclick=()=>{ if(confirm('Delete this idea?')){ state.ideas=state.ideas.filter(x=>x.id!==i.id); save(); render(); } };
         list.appendChild(el);
       });
       $('#count').textContent = state.ideas.length ? `${state.ideas.length} idea${state.ideas.length>1?'s':''} saved on this device` : '';
-      // ratings
+      // ratings (per player, shared with the in-game "rate this game" widgets)
       const r=$('#ratings'); r.innerHTML='';
-      GAMES.forEach(g => { const d=document.createElement('div'); d.className='game'; const cur=state.ratings[g]||0;
+      GAMES.forEach(g => { const id=GAMEIDS[g]; const d=document.createElement('div'); d.className='game'; const cur=Arcade.rating(id);
         d.innerHTML=`<b>${g}</b><div class="stars">${[1,2,3,4,5].map(n=>`<button type="button" class="${n<=cur?'lit':''}" data-n="${n}">⭐</button>`).join('')}</div>`;
-        d.querySelectorAll('button').forEach(b=>b.onclick=()=>{ state.ratings[g]=+b.dataset.n; save(); render(); }); r.appendChild(d); });
+        d.querySelectorAll('button').forEach(b=>b.onclick=()=>{ Arcade.rate(id, +b.dataset.n); state=Arcade.ideas(); render(); }); r.appendChild(d); });
     }
     function listText(){
-      const lines = ["Amal's ideas for Amal's Games 💡", ''];
-      state.ideas.forEach((i,n)=> lines.push(`${n+1}. ${i.emoji} ${i.title} [${i.game}] ${'⭐'.repeat(i.want)}${i.done?' (done)':''}${i.desc?'\n   '+i.desc:''}`));
-      const rated = Object.entries(state.ratings); if(rated.length){ lines.push('', 'Game ratings:'); rated.forEach(([g,v])=>lines.push(`- ${g}: ${'⭐'.repeat(v)}`)); }
+      const lines = ["Ideas for Amal's Games 💡", ''];
+      state.ideas.forEach((i,n)=> lines.push(`${n+1}. ${i.emoji} ${i.title} — ${i.who||'Amal'} [${i.game}] ${'⭐'.repeat(i.want)}${i.done?' (done)':''}${i.desc?'\n   '+i.desc:''}`));
+      const rated = Object.entries(state.ratings); if(rated.length){ lines.push('', 'Game ratings:'); rated.forEach(([g,v])=>{ const o = (v && typeof v==='object') ? Object.entries(v).map(([p,s])=>`${p} ${'⭐'.repeat(s)}`).join(', ') : '⭐'.repeat(v); lines.push(`- ${g}: ${o}`); }); }
       return lines.join('\n');
     }
     $('#share').onclick = async () => {

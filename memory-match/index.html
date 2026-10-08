@@ -6,6 +6,7 @@
 <meta name="theme-color" content="#0b0f2b">
 <meta name="description" content="Memory Match — a sleek card-matching memory game with themed packs, levels, twists and 2-player mode. Part of Amal's Games.">
 <title>Memory Match</title>
+<script src="../shared/arcade.js"></script>
 <style>
 /* ============================================================
    Memory Match — styles
@@ -64,6 +65,9 @@ button:focus-visible{outline:3px solid var(--cyan);outline-offset:2px}
   padding:7px 12px;border-radius:999px;background:rgba(255,255,255,.08);border:1px solid var(--line);white-space:nowrap;font-size:.92rem
 }
 .home:hover{background:rgba(255,255,255,.14)}
+.top .arc-chip{padding:6px 10px;font-size:.82rem;background:rgba(255,255,255,.08);border-color:var(--line);flex:0 0 auto}
+.playing{margin:-6px 0 14px;color:var(--muted);font-weight:700;font-size:.95rem}
+.playing b{color:var(--ink)}
 .stats{display:flex;gap:6px;margin-left:auto;margin-right:auto;min-width:0}
 .stat{
   display:flex;flex-direction:column;align-items:center;min-width:58px;padding:4px 8px;border-radius:12px;
@@ -313,6 +317,7 @@ body:not(.kb) .card.kfocus::before{display:none}
   <div class="panel" style="width:min(100%,620px)">
     <h1>Memory Match</h1>
     <p class="sub">Flip, remember, match. Clear every level and collect all the stars.</p>
+    <p class="playing">Playing as <b id="startPlayer">…</b></p>
 
     <div class="sect">
       <h3><span class="n">1</span> Pick a theme</h3>
@@ -416,6 +421,8 @@ body:not(.kb) .card.kfocus::before{display:none}
 'use strict';
 
 const LS = 'memorymatch-';   // localStorage key prefix
+const GAME_ID = 'memory-match';
+const K = (k) => (window.Arcade ? Arcade.key(k) : k);   // per-player namespaced key
 const $ = (id) => document.getElementById(id);
 const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
@@ -452,11 +459,11 @@ const LEVELS = [
 /* ---------------- Storage ---------------- */
 const store = {
   get(key, fallback) {
-    try { const v = localStorage.getItem(LS + key); return v === null ? fallback : JSON.parse(v); }
+    try { const v = localStorage.getItem(K(LS + key)); return v === null ? fallback : JSON.parse(v); }
     catch (e) { return fallback; }
   },
   set(key, val) {
-    try { localStorage.setItem(LS + key, JSON.stringify(val)); } catch (e) { /* storage unavailable */ }
+    try { localStorage.setItem(K(LS + key), JSON.stringify(val)); } catch (e) { /* storage unavailable */ }
   }
 };
 let progress = store.get('progress', {});   // { themeId: { "1": stars, ... } }
@@ -468,6 +475,7 @@ let mode     = store.get('mode', 1) === 2 ? 2 : 1;
 
 const starsFor = (themeId, lvl) => (progress[themeId] && progress[themeId][lvl]) || 0;
 const totalStars = (themeId) => LEVELS.reduce((s, _, i) => s + starsFor(themeId, i + 1), 0);
+const allStars = () => THEMES.reduce((s, t) => s + totalStars(t.id), 0);   // across every theme (leaderboard score)
 const isUnlocked = (themeId, lvl) => mode === 2 || lvl === 1 || starsFor(themeId, lvl - 1) > 0;
 
 /* ---------------- Audio (Web Audio synthesis, no files) ---------------- */
@@ -776,6 +784,11 @@ function showWin(secs) {
   else msgs.push(`${G.theme.name} complete — go for 3 stars!`);
   $('winMsg').textContent = msgs.join(' ');
   $('btnNext').classList.toggle('hidden', G.level >= LEVELS.length);
+  if (window.Arcade) {
+    Arcade.record(GAME_ID, allStars(), { theme: G.theme.id, level: G.level, stars, moves: G.moves, time: secs });
+    const panel = $('ovWin').querySelector('.panel');
+    if (!panel.querySelector('.arc-rate')) panel.querySelector('.row').before(Arcade.ratingWidget(GAME_ID));
+  }
   $('ovWin').classList.remove('hidden');
   $('btnNext').classList.contains('hidden') ? $('btnReplay').focus() : $('btnNext').focus();
   audio.win(); confetti.burst(stars === 3 ? 160 : 90);
@@ -788,6 +801,11 @@ function showP2Result() {
   $('p2r1').querySelector('b').textContent = a; $('p2r2').querySelector('b').textContent = b;
   $('p2r1').classList.toggle('win', win === 0); $('p2r2').classList.toggle('win', win === 1);
   $('btnP2Next').classList.toggle('hidden', G.level >= LEVELS.length);
+  if (window.Arcade) {
+    Arcade.record(GAME_ID, allStars(), { theme: G.theme.id, level: G.level, mode: 2, pairs: [a, b] });
+    const panel = $('ovP2').querySelector('.panel');
+    if (!panel.querySelector('.arc-rate')) panel.querySelector('.row').before(Arcade.ratingWidget(GAME_ID));
+  }
   $('ovP2').classList.remove('hidden'); $('btnRematch').focus();
   audio.win(); confetti.burst(120);
 }
@@ -931,6 +949,22 @@ document.addEventListener('visibilitychange', () => { if (document.hidden && G.d
 let resizeT = 0;
 window.addEventListener('resize', () => { clearTimeout(resizeT); resizeT = setTimeout(fitGrid, 80); });
 window.addEventListener('orientationchange', () => setTimeout(fitGrid, 200));
+
+/* ---------------- Arcade (player profiles) ---------------- */
+if (window.Arcade) {
+  const paintPlayer = () => { $('startPlayer').textContent = Arcade.emoji() + ' ' + Arcade.profile(); };
+  paintPlayer();
+  document.querySelector('.top .home').after(Arcade.chip());
+  document.addEventListener('arcade:profile', () => {
+    paintPlayer();
+    const inGame = G.def && $('start').classList.contains('hidden') && !G.over;
+    // On the start screen or a result panel, reload so progress/stars reflect the new player.
+    if (!inGame) { location.reload(); return; }
+    // Mid-level: re-read the new player's progress so this level is saved under their name.
+    progress = store.get('progress', {}); bests = store.get('best', {}); updateHUD();
+  });
+  Arcade.require(GAME_ID);
+}
 
 /* ---------------- Boot ---------------- */
 setMuted(muted);

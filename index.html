@@ -9,7 +9,11 @@
   <meta name="apple-mobile-web-app-title" content="Amal's Games" />
   <link rel="apple-touch-icon" href="./animal-spot/icons/icon-192.png" />
   <title>Amal's Games</title>
+  <script src="./shared/arcade.js"></script>
   <style>
+    .whobar { position: relative; z-index: 2; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; justify-content: center; margin: -6px 0 18px; }
+    .whobar .arc-chip { font-size: 1.05rem; padding: 12px 18px; border-color: var(--sun); }
+    .whobar a { color: #e9e4ff; font-weight: 900; text-decoration: none; padding: 10px 16px; border-radius: 999px; background: rgba(255,255,255,.08); border: 2px solid var(--edge); }
     :root {
       --bg1: #120a2e; --bg2: #2a1468; --bg3: #0b3b5e;
       --ink: #ffffff; --muted: #b9b4e3;
@@ -53,6 +57,7 @@
     .tag { margin-top: 14px; color: var(--muted); font-weight: 700; font-size: clamp(1rem, 3.4vw, 1.3rem); }
     .hero-art { margin: 26px auto 0; max-width: 980px; border-radius: 30px; overflow: hidden; border: 3px solid var(--edge); box-shadow: var(--shadow), 0 0 60px rgba(155,92,255,.35); }
     .hero-art img { display: block; width: 100%; height: auto; }
+    .hero-art { position: relative; } .hero-vid { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
     .avatar-row { display: flex; justify-content: center; gap: 8px; margin-top: 22px; flex-wrap: wrap; }
     .avatar-row span { font-size: 2rem; width: 58px; height: 58px; display: grid; place-items: center; border-radius: 18px; background: rgba(255,255,255,.1); border: 2px solid var(--edge); animation: bob 5s ease-in-out infinite; }
     .avatar-row span:nth-child(2n) { animation-delay: .6s; } .avatar-row span:nth-child(3n) { animation-delay: 1.2s; }
@@ -133,8 +138,10 @@
       <div class="badge"><span class="dot"></span> Amal's own game arcade</div>
       <h1><span class="a">Amal's</span> <span class="g">Games</span></h1>
       <p class="tag">Pick a game, beat your best score, collect the stars ⭐</p>
-      <div class="hero-art"><img src="./assets/hero.jpg" alt="Amal's Games characters cheering" loading="eager" /></div>
+      <div class="hero-art"><img src="./assets/hero.jpg" alt="Amal's Games characters cheering" loading="eager" /><video class="hero-vid" src="./assets/hero.mp4" poster="./assets/hero.jpg" autoplay muted loop playsinline aria-hidden="true"></video></div>
     </header>
+
+    <div class="whobar" id="whobar"><span class="muted" style="color:var(--muted);font-weight:800">Playing as</span></div>
 
     <nav class="chips" aria-label="Filter games">
       <button class="chip on" data-f="all">✨ All games</button>
@@ -147,13 +154,7 @@
     <main class="grid" id="grid">
 
       <a class="game" href="./amal-turbo/index.html" data-type="racing" aria-label="Play Amal Turbo">
-        <div class="art turbo">
-          <span class="pill">3D Racing</span>
-          <img class="racer r1" src="./amal-turbo/racers/leo.png" alt="" />
-          <img class="racer r2" src="./amal-turbo/racers/kiki.png" alt="" />
-          <img class="racer r3" src="./amal-turbo/racers/shadow.png" alt="" />
-          <span class="big">🏎️</span>
-        </div>
+        <div class="art" style="background:url('./art/cards/amal-turbo.jpg') center/cover"><span class="pill">3D Racing</span></div>
         <div class="body">
           <div class="title"><h2>Amal Turbo</h2><span class="age">Ages 8+</span></div>
           <p class="desc">Full 3D kart racing! Drift round corners for turbo boosts, grab power-ups and race 12 animal champions across candy, ocean, space and neon worlds.</p>
@@ -163,11 +164,7 @@
       </a>
 
       <a class="game" href="./animal-spot/index.html" data-type="brain" aria-label="Play Animal Spot">
-        <div class="art spot">
-          <span class="pill">Spot & Memory</span>
-          <span class="mini m1">🦁</span><span class="mini m2">🐧</span><span class="mini m3">🐸</span><span class="mini m4">🦊</span>
-          <span class="big">🔍</span>
-        </div>
+        <div class="art" style="background:url('./art/cards/animal-spot.jpg') center/cover"><span class="pill">Spot & Memory</span></div>
         <div class="body">
           <div class="title"><h2>Animal Spot!</h2><span class="age">Ages 6+</span></div>
           <p class="desc">Find the hidden animal fast! Race the clock, build streaks, test your memory in Peek &amp; Seek and discover all 65 animals across 7 worlds.</p>
@@ -177,11 +174,7 @@
       </a>
 
       <a class="game" href="./block-blitz/index.html" data-type="puzzle" aria-label="Play Block Blitz">
-        <div class="art blitz">
-          <span class="pill">Classic Puzzle</span>
-          <span class="mini m1">🟦</span><span class="mini m2">🟪</span><span class="mini m3">🟩</span><span class="mini m4">🟨</span>
-          <span class="big">🧩</span>
-        </div>
+        <div class="art" style="background:url('./art/cards/block-blitz.jpg') center/cover"><span class="pill">Classic Puzzle</span></div>
         <div class="body">
           <div class="title"><h2>Block Blitz</h2><span class="age">Ages 7+</span></div>
           <p class="desc">Stack the falling blocks and clear lines before they reach the top. It gets faster every level — how long can you last?</p>
@@ -191,11 +184,7 @@
       </a>
 
       <a class="game" href="./bubble-pop/index.html" data-type="puzzle" aria-label="Play Bubble Pop">
-        <div class="art bubble">
-          <span class="pill">Aim & Pop</span>
-          <span class="mini m1">🔵</span><span class="mini m2">🟢</span><span class="mini m3">🟡</span><span class="mini m4">🔴</span>
-          <span class="big">🫧</span>
-        </div>
+        <div class="art" style="background:url('./art/cards/bubble-pop.jpg') center/cover"><span class="pill">Aim & Pop</span></div>
         <div class="body">
           <div class="title"><h2>Bubble Pop</h2><span class="age">Ages 6+</span></div>
           <p class="desc">Aim, shoot and match 3 bubbles of the same colour to pop them. Bounce shots off the walls and clear the board before it drops!</p>
@@ -205,11 +194,7 @@
       </a>
 
       <a class="game" href="./amal-world/index.html" data-type="adventure" aria-label="Play Amal World">
-        <div class="art world">
-          <span class="pill">Platform Adventure</span>
-          <span class="mini m1">🪙</span><span class="mini m2">⭐</span><span class="mini m3">🍄</span><span class="mini m4">🚩</span>
-          <span class="big">🏃</span>
-        </div>
+        <div class="art" style="background:url('./art/cards/amal-world.jpg') center/cover"><span class="pill">Platform Adventure</span></div>
         <div class="body">
           <div class="title"><h2>Amal World</h2><span class="age">Ages 7+</span></div>
           <p class="desc">Run and jump through colourful worlds, bounce on enemies, grab every coin and reach the flag. Earn 3 stars on every level!</p>
@@ -231,11 +216,7 @@
       </a>
 
       <a class="game" href="./falcon-flight/index.html" data-type="adventure" aria-label="Play Falcon Flight">
-        <div class="art" style="background:linear-gradient(160deg,#ffb703,#ff5d8f 55%,#5a1e8a)">
-          <span class="pill">One-tap Flyer</span>
-          <span class="mini m1">🏙️</span><span class="mini m2">🌴</span><span class="mini m3">🪙</span><span class="mini m4">🛡️</span>
-          <span class="big">🦅</span>
-        </div>
+        <div class="art" style="background:url('./art/cards/falcon-flight.jpg') center/cover"><span class="pill">One-tap Flyer</span></div>
         <div class="body">
           <div class="title"><h2>Falcon Flight</h2><span class="age">Ages 6+</span></div>
           <p class="desc">Tap to flap a brave falcon over the Dubai skyline. Slip through the gaps, grab coins and power-ups, and complete daily missions.</p>
@@ -245,11 +226,7 @@
       </a>
 
       <a class="game" href="./sky-hop/index.html" data-type="adventure" aria-label="Play Sky Hop">
-        <div class="art" style="background:linear-gradient(160deg,#4cc9f0,#9b5cff 60%,#120a2e)">
-          <span class="pill">Jump Higher</span>
-          <span class="mini m1">☁️</span><span class="mini m2">🚀</span><span class="mini m3">🪙</span><span class="mini m4">⭐</span>
-          <span class="big">🐱</span>
-        </div>
+        <div class="art" style="background:url('./art/cards/sky-hop.jpg') center/cover"><span class="pill">Jump Higher</span></div>
         <div class="body">
           <div class="title"><h2>Sky Hop</h2><span class="age">Ages 6+</span></div>
           <p class="desc">Bounce from platform to platform all the way to space! Catch springs and jetpacks, dodge monsters, and see how high you can go.</p>
@@ -259,11 +236,7 @@
       </a>
 
       <a class="game" href="./memory-match/index.html" data-type="brain" aria-label="Play Memory Match">
-        <div class="art" style="background:linear-gradient(160deg,#3fe0a8,#4cc9f0 55%,#2a1468)">
-          <span class="pill">Brain Trainer</span>
-          <span class="mini m1">🐼</span><span class="mini m2">🚀</span><span class="mini m3">🍕</span><span class="mini m4">🕌</span>
-          <span class="big">🃏</span>
-        </div>
+        <div class="art" style="background:url('./art/cards/memory-match.jpg') center/cover"><span class="pill">Brain Trainer</span></div>
         <div class="body">
           <div class="title"><h2>Memory Match</h2><span class="age">Ages 6+</span></div>
           <p class="desc">Flip the cards and find the pairs. Six theme packs, bigger grids every level, and a 2-player mode to challenge Dad.</p>
@@ -293,6 +266,11 @@
   </div>
 
   <script>
+    // who's playing — forced on first visit, switchable any time
+    Arcade.require(false);
+    const wb = document.getElementById('whobar');
+    wb.appendChild(Arcade.chip());
+    wb.insertAdjacentHTML('beforeend', '<a href="./stats/index.html">🏆 Stats & Leaderboards</a><a href="./ideas/index.html">💡 Ideas</a>');
     // filter chips
     const chips = document.querySelectorAll('.chip');
     const cards = document.querySelectorAll('.game');

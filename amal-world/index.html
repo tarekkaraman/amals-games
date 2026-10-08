@@ -8,6 +8,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Amal World">
 <title>Amal World</title>
+<script src="../shared/arcade.js"></script>
 <style>
   /* ============================================================
      Amal World — single-file platformer. All CSS/JS inline, no
@@ -44,6 +45,9 @@
     transition: background .15s, transform .15s;
   }
   .home:hover { background: rgba(255,255,255,.18); transform: translateY(-1px); }
+  .topbar .arc-chip { padding: 7px 11px; font-size: .85rem; background: rgba(255,255,255,.1); border-color: var(--edge); }
+  .playing { color: var(--muted); font-weight: 700; font-size: .95rem; margin: -10px 0 14px; }
+  .playing b { color: #fff; }
   .hud { display: flex; gap: 6px; flex: 1; justify-content: center; align-items: center; flex-wrap: wrap; min-width: 0; }
   .pill {
     display: inline-flex; align-items: center; gap: 6px; padding: 6px 11px; border-radius: 999px;
@@ -134,6 +138,16 @@
   .stat b { font-size: 1.25rem; }
   .stat b.gold { color: var(--sun); }
 
+  .story { color: var(--ink); font-weight: 700; line-height: 1.55; margin: 6px 0 14px; font-size: .98rem; opacity: .92; }
+  .btn.pulse { animation: pulse 1.4s ease-in-out infinite; }
+  @keyframes pulse { 0%, 100% { transform: scale(1); box-shadow: 0 8px 0 rgba(0,0,0,.25); } 50% { transform: scale(1.06); box-shadow: 0 8px 0 rgba(0,0,0,.25), 0 0 0 10px rgba(255,210,63,.18); } }
+  .card .hard { position: absolute; top: 10px; right: 12px; font-size: .72rem; font-weight: 900; letter-spacing: .08em; padding: 3px 8px; border-radius: 999px; background: #ff5d2e; color: #fff; box-shadow: 0 2px 0 rgba(0,0,0,.3); }
+  .card.hard .big { right: 74px; }
+  .confetti { position: absolute; inset: 0; overflow: hidden; pointer-events: none; z-index: 0; }
+  #screenFinale .panel { position: relative; z-index: 1; }
+  .confetti i { position: absolute; top: -16px; width: 10px; height: 14px; border-radius: 2px; animation: fall linear infinite; }
+  @keyframes fall { to { transform: translateY(120vh) rotate(720deg); } }
+
   /* hero preview canvas on title */
   #heroPreview { width: 120px; height: 120px; margin: 0 auto 6px; display: block; }
 
@@ -214,13 +228,14 @@
         <canvas id="heroPreview" width="240" height="240"></canvas>
         <div class="kicker">Amal's Games presents</div>
         <h1 class="logo"><span class="a">AMAL</span> <span class="w">WORLD</span></h1>
-        <p class="sub">Run, jump, stomp &amp; collect every star across six worlds.</p>
+        <p class="story">Welcome to Amal's World — six bright lands and three fiery trials.<br>Someone scattered all the stars across the sky!<br>Run, jump, stomp the grumps and collect every star.</p>
+        <p class="playing">Playing as <b id="startPlayer">…</b></p>
         <div class="stats">
           <div class="stat"><small>Stars</small><b class="gold" id="titleStars">0 / 18</b></div>
           <div class="stat"><small>Big stars</small><b id="titleBig">0 / 6</b></div>
         </div>
         <div class="btnrow">
-          <button class="btn primary" id="btnPlay">▶ Play</button>
+          <button class="btn primary pulse" id="btnPlay">▶ Press to start</button>
         </div>
         <div class="hint">
           <kbd>←</kbd> <kbd>→</kbd> or <kbd>A</kbd> <kbd>D</kbd> move &nbsp;·&nbsp; <kbd>Space</kbd> / <kbd>↑</kbd> / <kbd>W</kbd> jump (hold for higher)<br>
@@ -281,12 +296,35 @@
       </div>
     </div>
 
+    <!-- Finale (after the last level) -->
+    <div class="overlay" id="screenFinale">
+      <div class="confetti" id="confetti"></div>
+      <div class="panel">
+        <div class="kicker">Every land explored</div>
+        <h2>You finished Amal's World! 🏆</h2>
+        <p class="sub">The stars are back in the sky. What an explorer!</p>
+        <div class="stats">
+          <div class="stat"><small>Total stars</small><b class="gold" id="finStars">0 / 27</b></div>
+          <div class="stat"><small>Big stars</small><b id="finBig">0 / 9</b></div>
+        </div>
+        <div class="btnrow">
+          <button class="btn primary" id="btnFinaleLevels">▦ Level select</button>
+          <a class="btn ghost" href="../">🏠 Home</a>
+        </div>
+      </div>
+    </div>
+
     <!-- Game over -->
     <div class="overlay" id="screenGameOver">
       <div class="panel">
         <div class="kicker">So close!</div>
         <h2>Try again?</h2>
         <p class="sub">Every explorer slips sometimes. You've got this — the checkpoints will be waiting.</p>
+        <div class="stats">
+          <div class="stat"><small>Level</small><b id="goLevel">—</b></div>
+          <div class="stat"><small>Coins</small><b id="goCoins">0/0</b></div>
+          <div class="stat"><small>Stars so far</small><b class="gold" id="goStars">0</b></div>
+        </div>
         <div class="btnrow">
           <button class="btn primary" id="btnTryAgain">↻ Try again</button>
           <button class="btn ghost" id="btnGameOverLevels">▦ Levels</button>
@@ -320,27 +358,30 @@ const STOMP_V = 430, STOMP_V_HELD = 620;
 const COYOTE = 0.08, JUMP_BUFFER = 0.10;
 const PLAT_W = 2 * T, PLAT_H = 16, PLAT_AMP = 2 * T, PLAT_PERIOD = 3.2;
 const SAVE_KEY = 'amalworld-save', MUTE_KEY = 'amalworld-muted';
+const K = (k) => (window.Arcade ? Arcade.key(k) : k);   // per-player namespaced localStorage key
+const GAME_ID = 'amal-world';
 
 /* ==================================================================
-   THEMES (one per world). Colors only; all art is procedural.
+   THEMES (one per world). Colors are the fallback; `bg` names a painted
+   backdrop in ./art/<bg>.jpg drawn with parallax once it has loaded.
    ================================================================== */
 const THEMES = {
-  meadow:  { label: 'Meadow',  skyTop: '#3fb0ee', skyBot: '#cdeeff', far: '#9fdcae', near: '#5fc06f', cloud: 'rgba(255,255,255,.92)',
+  meadow:  { label: 'Meadow',  bg: 'meadow', skyTop: '#3fb0ee', skyBot: '#cdeeff', far: '#9fdcae', near: '#5fc06f', cloud: 'rgba(255,255,255,.92)',
              ground: '#8a5a33', groundDark: '#6e4425', cap: '#5fd05f', capDark: '#3fae45', brick: '#e8893e', brickHi: '#f8b376', plank: '#b97a3e',
              liquid: '#3aa7ff', liquidHi: '#bfe6ff', enemy: '#8d5bff', enemyDark: '#5f3bc4', flag: '#ff5d8f', sun: '#ffe36b', ambient: 'none' },
-  desert:  { label: 'Desert',  skyTop: '#ff9f5a', skyBot: '#ffe9c4', far: '#efc08a', near: '#d9955a', cloud: 'rgba(255,245,230,.85)',
+  desert:  { label: 'Desert',  bg: 'dunes', skyTop: '#ff9f5a', skyBot: '#ffe9c4', far: '#efc08a', near: '#d9955a', cloud: 'rgba(255,245,230,.85)',
              ground: '#c98a4e', groundDark: '#a86e3a', cap: '#f3cf7c', capDark: '#dcb15c', brick: '#c96a4a', brickHi: '#e8977a', plank: '#9b6a3a',
              liquid: '#e9b66c', liquidHi: '#fff1c6', enemy: '#2fb3a8', enemyDark: '#1d7f78', flag: '#2fb3a8', sun: '#fff0a8', ambient: 'none' },
-  snow:    { label: 'Snow',    skyTop: '#8fcbf2', skyBot: '#eef8ff', far: '#d6e9f8', near: '#aacfea', cloud: 'rgba(255,255,255,.95)',
+  snow:    { label: 'Snow',    bg: 'frost', skyTop: '#8fcbf2', skyBot: '#eef8ff', far: '#d6e9f8', near: '#aacfea', cloud: 'rgba(255,255,255,.95)',
              ground: '#6f8fb0', groundDark: '#55728f', cap: '#ffffff', capDark: '#cfe4f5', brick: '#6ea8de', brickHi: '#a9d2f5', plank: '#8aa9c8',
              liquid: '#4f9fe8', liquidHi: '#d3ecff', enemy: '#5b6dff', enemyDark: '#3a46c4', flag: '#4cc9f0', sun: '#fff8d8', ambient: 'snow' },
-  candy:   { label: 'Candy',   skyTop: '#ff8ccf', skyBot: '#ffe6f6', far: '#ffb6e6', near: '#f58ad2', cloud: 'rgba(255,255,255,.9)',
+  candy:   { label: 'Candy',   bg: 'candy', skyTop: '#ff8ccf', skyBot: '#ffe6f6', far: '#ffb6e6', near: '#f58ad2', cloud: 'rgba(255,255,255,.9)',
              ground: '#7a4634', groundDark: '#5c3326', cap: '#ff7bb8', capDark: '#e85d9d', brick: '#7ad4ff', brickHi: '#b9e8ff', plank: '#ffb3d9',
              liquid: '#ff5fa2', liquidHi: '#ffd0e8', enemy: '#3fe0a8', enemyDark: '#20a877', flag: '#ffd23f', sun: '#fff3b0', ambient: 'sprinkles' },
-  night:   { label: 'Night',   skyTop: '#0a1238', skyBot: '#2b3f8a', far: '#1b2d63', near: '#25418d', cloud: 'rgba(120,140,220,.35)',
+  night:   { label: 'Night',   bg: 'night', skyTop: '#0a1238', skyBot: '#2b3f8a', far: '#1b2d63', near: '#25418d', cloud: 'rgba(120,140,220,.35)',
              ground: '#31386b', groundDark: '#242a52', cap: '#7fe3ff', capDark: '#49b8e0', brick: '#5a63c8', brickHi: '#8c95f0', plank: '#6c74c9',
              liquid: '#1d2a66', liquidHi: '#4f66d9', enemy: '#ff6b9d', enemyDark: '#c6416f', flag: '#ffd23f', sun: '#fff6cc', ambient: 'stars' },
-  volcano: { label: 'Volcano', skyTop: '#3a1414', skyBot: '#a3412a', far: '#5a2626', near: '#7a3a2f', cloud: 'rgba(90,40,40,.6)',
+  volcano: { label: 'Volcano', bg: 'volcano', skyTop: '#3a1414', skyBot: '#a3412a', far: '#5a2626', near: '#7a3a2f', cloud: 'rgba(90,40,40,.6)',
              ground: '#4a4a52', groundDark: '#33333a', cap: '#8a8a94', capDark: '#6a6a74', brick: '#9b4a3a', brickHi: '#d07c5c', plank: '#6b4a3a',
              liquid: '#ff6a1e', liquidHi: '#ffd166', enemy: '#ff9f1c', enemyDark: '#c56f00', flag: '#ffd23f', sun: '#ffb070', ambient: 'embers' },
 };
@@ -465,6 +506,61 @@ const LEVELS = [
     '##########.......##############......##############..............################........#################..........########################',
     '##########~~~~~~~##############~~~~~~##############~~~~~~~~~~~~~~################~~~~~~~~#################~~~~~~~~~~########################',
   ]},
+  // ---- HARD levels (🔥) — longer gaps, single-tile stepping stones, more enemies, 1 checkpoint ----
+  { name: 'Scorched Sands', theme: 'desert', par: 95, hard: true, map: [
+    '....................................................................................................................................',
+    '....................................................................................................................................',
+    '....................................................................................................................................',
+    '....................................................................................................................................',
+    '....................................................................................................................................',
+    '..................................................................................................................o.o...............',
+    '...................................................................................................................*................',
+    '..................................................................................................................BBB...............',
+    '....................................................................................................................................',
+    '....................................................................................................................................',
+    '.....................................................o..o..o...........................oooo.........................................',
+    '.................ooo...........oo................................ooo.............................oooo...............................',
+    '.....ooo....................................ooo......B..B..B...................ooo......M...................................ooo.....',
+    '..P.............E...E..........^^.........E...E..C..............E.E..^^.......E..E..............E..E..^^........S............E..E.G.',
+    '##########...############...########...############..........############...#########........##############...#########...##########',
+    '##########~~~############~~~########~~~############~~~~~~~~~~############~~~#########~~~~~~~~##############~~~#########~~~##########',
+  ]},
+  { name: 'Blizzard Bridge', theme: 'snow', par: 110, hard: true, map: [
+    '............................................................................................................................................',
+    '............................................................................................................................................',
+    '............................................................................................................................................',
+    '............................................................................................................................................',
+    '.....................................................oo.....................................................................................',
+    '....................................................................................................................o..o....................',
+    '.................................................oo..................................................................*......................',
+    '....................................................................................................................BBBB....................',
+    '.............................................oo..--.........................................................................................',
+    '.....................................................N.....................................o................................................',
+    '.........................................oo..--.........................................o.....o............................oooo.............',
+    '..............ooo.........oo................................ooo...........ooo..............B........ooooo...................................',
+    '.....ooo.................................--.............................................B.....B.............................M.......ooo.....',
+    '..P............E..........^^.E.......E.....................E..^^.E......C...E.E....................E...E..E.......S...................E.E.G.',
+    '#########...########...########...######................###########...###########...##..........#############...#########..........#########',
+    '#########~~~########~~~########~~~######~~~~~~~~~~~~~~~~###########~~~###########~~~##~~~~~~~~~~#############~~~#########~~~~~~~~~~#########',
+  ]},
+  { name: 'Lava Gauntlet', theme: 'volcano', par: 130, hard: true, map: [
+    '............................................................................................................................................',
+    '............................................................................................................................................',
+    '............................................................................................................................................',
+    '............................................................................................................................................',
+    '......................................................................................................................oo....................',
+    '.................................................................................................................o.o........................',
+    '..................................................................................................................*.........................',
+    '.................................................................................................................BBB........................',
+    '............................................................................................................................................',
+    '............................................................................................................................................',
+    '........................................oo...oo.......................................o..o..o.........................N.....................',
+    '............ooo........oo.......ooo...................oooo..........oo........ooo.................ooo.........................ooo....oo.....',
+    '....ooo.................................M....M........................................B..B..B...............................................',
+    '..P..........E.........^^.E......E...................E..E..E.C......^^........E..E...............E.E.^^......C.S.............E..E.^^.E..G...',
+    '########...######...########...######.............############...########...########..........############...#######......##################',
+    '########~~~######~~~########~~~######~~~~~~~~~~~~~############~~~########~~~########~~~~~~~~~~############~~~#######~~~~~~##################',
+  ]},
 ];
 // LEVELS-END
 
@@ -477,7 +573,7 @@ const stage = $('stage');
 const els = {
   coins: $('hudCoins'), coinsTotal: $('hudCoinsTotal'), lives: $('hudLives'), level: $('hudLevel'), timer: $('hudTimer'),
   pause: $('btnPause'), mute: $('btnMute'),
-  screens: { title: $('screenTitle'), levels: $('screenLevels'), pause: $('screenPause'), complete: $('screenComplete'), gameover: $('screenGameOver') },
+  screens: { title: $('screenTitle'), levels: $('screenLevels'), pause: $('screenPause'), complete: $('screenComplete'), finale: $('screenFinale'), gameover: $('screenGameOver') },
   grid: $('levelGrid'), titleStars: $('titleStars'), titleBig: $('titleBig'),
   st: [$('st1'), $('st2'), $('st3')], cCoins: $('cCoins'), cTime: $('cTime'), cPar: $('cPar'), cBest: $('cBest'), cBigStar: $('cBigStar'),
   completeTitle: $('completeTitle'), completeKicker: $('completeKicker'), btnNext: $('btnNext'), pauseLevelName: $('pauseLevelName'),
@@ -489,11 +585,13 @@ const els = {
 const save = loadSave();
 function loadSave() {
   try {
-    const s = JSON.parse(localStorage.getItem(SAVE_KEY) || '{}');
+    const s = JSON.parse(localStorage.getItem(K(SAVE_KEY)) || '{}');
     return { unlocked: Math.max(1, s.unlocked | 0), levels: s.levels || {} };
   } catch (e) { return { unlocked: 1, levels: {} }; }
 }
-function persist() { try { localStorage.setItem(SAVE_KEY, JSON.stringify(save)); } catch (e) { /* storage unavailable: ignore */ } }
+function persist() { try { localStorage.setItem(K(SAVE_KEY), JSON.stringify(save)); } catch (e) { /* storage unavailable: ignore */ } }
+/** Re-read the save for the current player (used when the profile changes). */
+function reloadSave() { const fresh = loadSave(); save.unlocked = fresh.unlocked; save.levels = fresh.levels; }
 function levelSave(i) { return save.levels[i] || { stars: 0, best: null, bigStar: false }; }
 function totalStars() { let n = 0; for (let i = 0; i < LEVELS.length; i++) n += levelSave(i).stars; return n; }
 function totalBig() { let n = 0; for (let i = 0; i < LEVELS.length; i++) n += levelSave(i).bigStar ? 1 : 0; return n; }
@@ -504,7 +602,7 @@ function totalBig() { let n = 0; for (let i = 0; i < LEVELS.length; i++) n += le
 const Sfx = (() => {
   let ac = null;
   let muted = false;
-  try { muted = localStorage.getItem(MUTE_KEY) === '1'; } catch (e) { /* ignore */ }
+  try { muted = localStorage.getItem(K(MUTE_KEY)) === '1'; } catch (e) { /* ignore */ }
   function context() {
     if (!ac) { const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return null; ac = new AC(); }
     if (ac.state === 'suspended') ac.resume();
@@ -535,7 +633,7 @@ const Sfx = (() => {
   }
   return {
     get muted() { return muted; },
-    toggle() { muted = !muted; try { localStorage.setItem(MUTE_KEY, muted ? '1' : '0'); } catch (e) { /* ignore */ } return muted; },
+    toggle() { muted = !muted; try { localStorage.setItem(K(MUTE_KEY), muted ? '1' : '0'); } catch (e) { /* ignore */ } return muted; },
     unlock() { context(); },
     jump()   { tone({ f: 330, f2: 660, type: 'square', dur: 0.13, vol: 0.06 }); },
     coin()   { tone({ f: 1046, type: 'sine', dur: 0.08, vol: 0.12 }); tone({ f: 1568, type: 'sine', dur: 0.18, vol: 0.12, delay: 0.07 }); },
@@ -559,7 +657,7 @@ const keyLeft = new Set(['ArrowLeft', 'KeyA']), keyRight = new Set(['ArrowRight'
 window.addEventListener('keydown', e => {
   if (keyLeft.has(e.code)) { input.left = true; e.preventDefault(); }
   else if (keyRight.has(e.code)) { input.right = true; e.preventDefault(); }
-  else if (keyJump.has(e.code)) { if (!e.repeat) { input.jump = true; input.jumpPressed = true; } e.preventDefault(); }
+  else if (keyJump.has(e.code)) { if (!e.repeat) { input.jump = true; input.jumpPressed = true; if (game.state === 'title') showLevels(); } e.preventDefault(); }
   else if (e.code === 'Escape' || e.code === 'KeyP') { togglePause(); e.preventDefault(); }
   else if (e.code === 'Enter' && game.state === 'title') { Sfx.unlock(); showLevels(); }
   Sfx.unlock();
@@ -864,7 +962,18 @@ function die(fell) {
 function afterDeath() {
   game.lives--;
   syncHUD(true);
-  if (game.lives <= 0) { game.state = 'gameover'; document.body.classList.remove('playing'); showScreen('gameover'); }
+  if (game.lives <= 0) {
+    game.state = 'gameover'; document.body.classList.remove('playing');
+    $('goLevel').textContent = `${game.levelIndex + 1}. ${game.def.name}`;
+    $('goCoins').textContent = `${game.coins}/${game.coinsTotal}`;
+    $('goStars').textContent = `${totalStars()} / ${LEVELS.length * 3}`;
+    if (window.Arcade) {
+      Arcade.record(GAME_ID, totalStars(), { level: game.levelIndex + 1, outcome: 'gameover' });
+      const panel = els.screens.gameover.querySelector('.panel');
+      if (!panel.querySelector('.arc-rate')) panel.querySelector('.btnrow').before(Arcade.ratingWidget(GAME_ID));
+    }
+    showScreen('gameover');
+  }
   else respawn(true);
 }
 
@@ -948,6 +1057,7 @@ function finishLevel() {
   save.unlocked = Math.max(save.unlocked, Math.min(LEVELS.length, game.levelIndex + 2));
   persist();
   game.stats = { stars, allCoins, underPar, isBest, time: game.time };
+  if (window.Arcade) Arcade.record(GAME_ID, totalStars(), { level: game.levelIndex + 1, stars, time: Math.round(game.time * 10) / 10 });
 }
 function showComplete() {
   const s = game.stats, def = game.def;
@@ -960,9 +1070,26 @@ function showComplete() {
   const best = levelSave(game.levelIndex).best; els.cBest.textContent = best == null ? '—' : fmtTime(best);
   els.cBigStar.textContent = game.bigStar ? '🌟 Big star found!' : (levelSave(game.levelIndex).bigStar ? '🌟 Big star already found' : 'Psst… there is a hidden big star somewhere in this level.');
   const last = game.levelIndex >= LEVELS.length - 1;
-  els.btnNext.textContent = last ? '🏆 You finished Amal World!' : 'Next level ›';
-  els.btnNext.disabled = last;
+  els.btnNext.textContent = last ? '🏆 See the ending ›' : 'Next level ›';
+  if (window.Arcade) {
+    const panel = els.screens.complete.querySelector('.panel');
+    if (!panel.querySelector('.arc-rate')) panel.querySelector('.btnrow').before(Arcade.ratingWidget(GAME_ID));
+  }
   showScreen('complete');
+}
+function showFinale() {
+  game.state = 'finale'; document.body.classList.remove('playing');
+  $('finStars').textContent = `${totalStars()} / ${LEVELS.length * 3}`;
+  $('finBig').textContent = `${totalBig()} / ${LEVELS.length}`;
+  const box = $('confetti'), colors = ['#ffd23f', '#ff5d8f', '#3fe0a8', '#4cc9f0', '#9b5cff', '#ff9f1c', '#fff'];
+  box.innerHTML = '';
+  for (let i = 0; i < 90; i++) {
+    const c = document.createElement('i');
+    c.style.cssText = `left:${hash(i) * 100}%;background:${colors[i % colors.length]};animation-duration:${2.6 + hash(i + 7) * 2.4}s;animation-delay:${-hash(i + 3) * 4}s;transform:rotate(${hash(i + 11) * 360}deg)`;
+    box.appendChild(c);
+  }
+  Sfx.star();
+  showScreen('finale');
 }
 function fmtTime(s, noTenths) {
   const m = Math.floor(s / 60), sec = Math.floor(s % 60), tenths = Math.floor((s % 1) * 10);
@@ -999,12 +1126,13 @@ function buildLevelGrid() {
   LEVELS.forEach((def, i) => {
     const th = THEMES[def.theme], ls = levelSave(i), locked = i + 1 > save.unlocked;
     const card = document.createElement('button');
-    card.type = 'button'; card.className = 'card' + (locked ? ' locked' : '');
-    card.setAttribute('aria-label', `${locked ? 'Locked: ' : ''}Level ${i + 1} ${def.name}`);
+    card.type = 'button'; card.className = 'card' + (locked ? ' locked' : '') + (def.hard ? ' hard' : '');
+    card.setAttribute('aria-label', `${locked ? 'Locked: ' : ''}Level ${i + 1} ${def.name}${def.hard ? ' (hard)' : ''}`);
     const stars = [1, 2, 3].map(n => `<span class="${n <= ls.stars ? 'on' : ''}">★</span>`).join('');
     card.innerHTML = `
       <div class="sky" style="background:linear-gradient(180deg,${th.skyTop},${th.skyBot})"></div>
       <div class="hills" style="background:${th.near}"></div>
+      ${def.hard ? '<div class="hard">🔥 HARD</div>' : ''}
       ${ls.bigStar ? '<div class="big">🌟</div>' : ''}
       <div><div class="num">${i + 1}</div><div class="name">${def.name}</div></div>
       <div class="meta"><div class="stars">${stars}</div><div class="best">${ls.best == null ? th.label : fmtTime(ls.best)}</div></div>
@@ -1033,7 +1161,10 @@ els.pause.addEventListener('click', () => togglePause());
 $('btnResume').addEventListener('click', () => togglePause());
 $('btnRestart').addEventListener('click', () => { Sfx.select(); startLevel(game.levelIndex); });
 $('btnPauseLevels').addEventListener('click', () => { Sfx.select(); showLevels(); });
-$('btnNext').addEventListener('click', () => { Sfx.select(); if (game.levelIndex < LEVELS.length - 1) startLevel(game.levelIndex + 1); });
+$('btnNext').addEventListener('click', () => { Sfx.select(); if (game.levelIndex < LEVELS.length - 1) startLevel(game.levelIndex + 1); else showFinale(); });
+$('btnFinaleLevels').addEventListener('click', () => { Sfx.select(); showLevels(); });
+// Title: tap/click anywhere on the panel, or Enter/Space, starts.
+els.screens.title.addEventListener('click', e => { if (game.state === 'title' && !e.target.closest('a')) { Sfx.unlock(); Sfx.select(); showLevels(); } });
 $('btnReplay').addEventListener('click', () => { Sfx.select(); startLevel(game.levelIndex); });
 $('btnCompleteLevels').addEventListener('click', () => { Sfx.select(); showLevels(); });
 $('btnTryAgain').addEventListener('click', () => { Sfx.select(); startLevel(game.levelIndex); });
@@ -1103,11 +1234,34 @@ function render() {
 }
 
 /* ---------- background with parallax ---------- */
+// Painted backdrops, loaded lazily and never awaited; the gradient + procedural sky stays until each arrives.
+const bgImages = {};
+function bgImage(name) {
+  let im = bgImages[name];
+  if (!im) { im = bgImages[name] = new Image(); im.src = './art/' + name + '.jpg'; }
+  return im.complete && im.naturalWidth > 0 ? im : null;
+}
 function drawBackground(th, cx, cy, lh) {
   const g = ctx.createLinearGradient(0, 0, 0, VIEW_H);
   g.addColorStop(0, th.skyTop); g.addColorStop(1, th.skyBot);
   ctx.fillStyle = g; ctx.fillRect(0, 0, VIEW_W, VIEW_H);
   const yShift = (lh - VIEW_H - cy) * 0.25; // camera up -> scenery slides down a little
+
+  const im = th.bg && bgImage(th.bg);
+  if (im) {
+    // cover-fit, tiled horizontally, scrolled at 0.3x camera speed
+    const s = Math.max(VIEW_W / im.naturalWidth, VIEW_H / im.naturalHeight);
+    const dw = im.naturalWidth * s, dh = im.naturalHeight * s;
+    const y = Math.max(VIEW_H - dh, Math.min(0, VIEW_H - dh + yShift * 0.3));
+    let x = -((cx * 0.3) % dw); if (x > 0) x -= dw;
+    for (; x < VIEW_W; x += dw) ctx.drawImage(im, x, y, dw + 1, dh);
+    // soften the painted foreground so real platforms/hazards stay readable
+    const v = ctx.createLinearGradient(0, VIEW_H * 0.55, 0, VIEW_H);
+    v.addColorStop(0, 'rgba(0,0,0,0)'); v.addColorStop(1, 'rgba(0,0,0,.3)');
+    ctx.fillStyle = v; ctx.fillRect(0, VIEW_H * 0.55, VIEW_W, VIEW_H * 0.45);
+    drawAmbient(th, cx);
+    return;
+  }
 
   // sun / moon
   const sunX = VIEW_W * 0.78 - cx * 0.03, sunY = 90 + yShift * 0.4;
@@ -1453,6 +1607,20 @@ function frame(now) {
   if (steps >= 6) acc = 0;
   render();
   drawPreview();
+}
+
+/* ---------- arcade (player profiles) ---------- */
+if (window.Arcade) {
+  const paintPlayer = () => { $('startPlayer').textContent = Arcade.emoji() + ' ' + Arcade.profile(); };
+  paintPlayer();
+  document.querySelector('.topbar .home').after(Arcade.chip());
+  document.addEventListener('arcade:profile', () => {
+    paintPlayer();
+    // Outside a live level, reload so progress/stars reflect the new player.
+    if (game.state !== 'playing' && game.state !== 'paused') { location.reload(); return; }
+    reloadSave();   // mid-level: the finished level will be saved under the new player
+  });
+  Arcade.require(GAME_ID);
 }
 
 /* ---------- boot ---------- */

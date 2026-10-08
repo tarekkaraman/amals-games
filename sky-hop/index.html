@@ -6,6 +6,7 @@
 <meta name="theme-color" content="#0b1a3a">
 <meta name="description" content="Sky Hop — bounce higher and higher through the sky with Comet the astronaut cat. Part of Amal's Games.">
 <title>Sky Hop · Amal's Games</title>
+<script src="../shared/arcade.js"></script>
 <style>
   /* ------------------------------------------------------------------
      Sky Hop — page chrome. All game graphics are drawn on <canvas>.
@@ -75,6 +76,9 @@
   }
   .home:hover { background: var(--glass-strong); }
   .home:active { transform: scale(0.97); }
+  .topbar .arc-chip { padding: 6px 10px; font-size: 13px; background: var(--glass); border-color: var(--line); flex: 0 0 auto; }
+  .playing { color: var(--muted); font-weight: 700; font-size: 14px; margin-top: 6px; }
+  .playing b { color: var(--ink); }
   .stats { display: flex; gap: 6px; margin: 0 auto; min-width: 0; }
   .stat {
     display: flex; flex-direction: column; align-items: center; justify-content: center;
@@ -133,8 +137,8 @@
     padding: 10px 22px; border-radius: 999px;
     background: rgba(5, 12, 30, 0.6); border: 1px solid var(--line);
     backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
-    font-weight: 900; font-size: 22px; letter-spacing: 0.08em; text-transform: uppercase;
-    opacity: 0; pointer-events: none; white-space: nowrap;
+    font-weight: 900; font-size: clamp(15px, 5vw, 22px); letter-spacing: 0.08em; text-transform: uppercase;
+    opacity: 0; pointer-events: none; white-space: nowrap; z-index: 3;
     transition: opacity 0.35s ease, transform 0.35s ease;
   }
   .banner.show { opacity: 1; transform: translate(-50%, 0) scale(1); }
@@ -289,6 +293,7 @@
     <div class="panel">
       <div class="title">SKY HOP</div>
       <div class="sub">Bounce Comet the astronaut cat to space!</div>
+      <div class="playing">Playing as <b id="startPlayer">…</b></div>
       <canvas class="preview" id="preview" width="240" height="240" aria-hidden="true"></canvas>
       <div class="btns">
         <button class="btn primary" id="btnPlay">▶ Play</button>
@@ -296,6 +301,7 @@
           <button class="btn" id="btnHow">How to play</button>
           <button class="btn" id="btnShop">🪙 Shop</button>
         </div>
+        <button class="btn toggle" id="hardStart"><span>🔥 Hard mode</span><span class="state">OFF</span></button>
       </div>
       <div class="section" id="secHow">
         <div class="howto">
@@ -383,12 +389,15 @@ const RM = window.matchMedia && window.matchMedia('(prefers-reduced-motion: redu
 
 // Zones (entered at `at` metres). Colours are the sky gradient top/bottom.
 const ZONES = [
-  { name: 'Meadow',   emoji: '🌿', at: 0,    top: '#4fc3ff', bot: '#c8f3ff', mon: '#a855f7' },
-  { name: 'Clouds',   emoji: '☁️', at: 250,  top: '#2f7fe0', bot: '#a9ddff', mon: '#f472b6' },
-  { name: 'Sky City', emoji: '🏙️', at: 650,  top: '#1e2a78', bot: '#ff9a6b', mon: '#fb7185' },
-  { name: 'Space',    emoji: '🚀', at: 1200, top: '#03041a', bot: '#231a66', mon: '#4ade80' },
+  { name: 'Meadow',   emoji: '🌿', at: 0,    top: '#4fc3ff', bot: '#c8f3ff', mon: '#a855f7', img: 'meadow' },
+  { name: 'Clouds',   emoji: '☁️', at: 250,  top: '#2f7fe0', bot: '#a9ddff', mon: '#f472b6', img: 'clouds' },
+  { name: 'Sky City', emoji: '🏙️', at: 650,  top: '#1e2a78', bot: '#ff9a6b', mon: '#fb7185', img: 'city' },
+  { name: 'Space',    emoji: '🚀', at: 1200, top: '#03041a', bot: '#231a66', mon: '#4ade80', img: 'space' },
 ];
 const ZONE_BAND = 90;                 // metres over which sky colours cross-fade
+// Photo backdrops (art/*.jpg, 9:16). Loaded async; the gradient + decor stay as fallback until ready.
+ZONES.forEach(z => { z.pic = new Image(); z.pic.src = `art/${z.img}.jpg`; });
+const bgFx = { from: 0, to: 0, t: 1 };   // backdrop cross-fade: t 0→1 over 1s
 
 // Cosmetic suits (shop). `suit` = body colour, `trim` = belt/boots/collar.
 const SKINS = [
@@ -428,14 +437,17 @@ function ellipse(c, x, y, rx, ry) { c.beginPath(); c.ellipse(x, y, rx, ry, 0, 0,
 function tri(c, x1, y1, x2, y2, x3, y3) { c.beginPath(); c.moveTo(x1, y1); c.lineTo(x2, y2); c.lineTo(x3, y3); c.closePath(); c.fill(); }
 
 // ---------- Persistence ----------
+const GAME_ID = 'sky-hop';
+const K = (k) => (window.Arcade ? Arcade.key(k) : k);   // per-player namespaced key
 const store = {
-  get(k, d) { try { const v = localStorage.getItem(LS + k); return v === null ? d : JSON.parse(v); } catch (e) { return d; } },
-  set(k, v) { try { localStorage.setItem(LS + k, JSON.stringify(v)); } catch (e) { /* private mode etc. */ } },
+  get(k, d) { try { const v = localStorage.getItem(K(LS + k)); return v === null ? d : JSON.parse(v); } catch (e) { return d; } },
+  set(k, v) { try { localStorage.setItem(K(LS + k), JSON.stringify(v)); } catch (e) { /* private mode etc. */ } },
 };
 let best   = Number(store.get('best', 0)) || 0;
 let wallet = Number(store.get('coins', 0)) || 0;
 let muted  = !!store.get('mute', false);
 let tiltOn = !!store.get('tilt', false);
+let hard   = !!store.get('hard', false);   // K('skyhop-hard')
 let owned  = store.get('owned', ['classic']);
 let skinId = store.get('skin', 'classic');
 if (!Array.isArray(owned) || !owned.includes('classic')) owned = ['classic'];
@@ -627,6 +639,8 @@ $('tiltPause').addEventListener('click', toggleTilt);
 // ---------- UI helpers ----------
 function updateToggles() {
   [$('tiltStart'), $('tiltPause')].forEach(b => { b.classList.toggle('on', tiltOn); b.querySelector('.state').textContent = tiltOn ? 'ON' : 'OFF'; });
+  const hb = $('hardStart');
+  hb.classList.toggle('on', hard); hb.querySelector('.state').textContent = hard ? 'ON' : 'OFF';
   const sp = $('soundPause');
   sp.classList.toggle('on', !muted); sp.querySelector('.state').textContent = muted ? 'OFF' : 'ON';
   $('btnMute').textContent = muted ? '🔇' : '🔊';
@@ -635,6 +649,7 @@ function updateToggles() {
 function toggleMute() { muted = !muted; store.set('mute', muted); updateToggles(); if (!muted) SFX.click(); }
 $('btnMute').addEventListener('click', toggleMute);
 $('soundPause').addEventListener('click', toggleMute);
+$('hardStart').addEventListener('click', () => { SFX.click(); hard = !hard; store.set('hard', hard); updateToggles(); });
 
 let toastTimer = 0;
 function toast(msg) {
@@ -642,13 +657,14 @@ function toast(msg) {
   clearTimeout(toastTimer); toastTimer = setTimeout(() => toastEl.classList.remove('show'), 1600);
 }
 let bannerTimer = 0;
-function showBanner(z) {
-  bannerEl.textContent = `${z.emoji} ${z.name}`;
+function showBanner(text, ms) {
+  bannerEl.textContent = text;
   bannerEl.classList.remove('show');
   void bannerEl.offsetWidth;            // restart transition
   bannerEl.classList.add('show');
-  clearTimeout(bannerTimer); bannerTimer = setTimeout(() => bannerEl.classList.remove('show'), 1900);
+  clearTimeout(bannerTimer); bannerTimer = setTimeout(() => bannerEl.classList.remove('show'), ms || 1900);
 }
+const zoneBanner = z => showBanner(`${z.emoji} ${z.name}`);
 function showOverlay(el) {
   [ovStart, ovPause, ovOver].forEach(o => o.classList.toggle('show', o === el));
   stage.classList.toggle('playing', game.state === 'play');
@@ -715,7 +731,7 @@ function startRun() {
   updateHud();
   showOverlay(null);
   $('btnPause').textContent = '⏸';
-  showBanner(ZONES[0]);
+  zoneBanner(ZONES[0]);
 }
 function pauseGame() {
   if (game.state !== 'play') return;
@@ -738,6 +754,9 @@ function gameOver(reason) {
   p.dead = true; p.boost = null;
   if (reason === 'hit') { p.vy = 260; p.vx = -p.face * 120; SFX.hit(); game.shake = RM ? 0 : 1; puff(p.x, p.y, 16, '#ff4d6d'); }
   else SFX.over();
+  // outro: zone reached, shown before the over screen (overTimer gate in update)
+  const z = ZONES[game.zone];
+  showBanner(`You reached ${z.name}! ${z.emoji}`, 2300);
   // persist progress now (even if the player closes the tab during the overlay delay)
   wallet += game.runCoins; store.set('coins', wallet);
   game.newBest = game.score > best;
@@ -753,6 +772,11 @@ function showOverScreen() {
   $('resCoins').textContent = `+${game.runCoins}`;
   $('newBest').classList.toggle('show', !!game.newBest);
   updateHud();
+  if (window.Arcade) {
+    Arcade.record(GAME_ID, game.score, { coins: game.runCoins });
+    const panel = ovOver.querySelector('.panel');
+    if (!panel.querySelector('.arc-rate')) panel.querySelector('.btns').before(Arcade.ratingWidget(GAME_ID));
+  }
   showOverlay(ovOver);
 }
 
@@ -767,14 +791,15 @@ function generate() {
     const gap = rand(60 + 20 * d, 95 + 30 * d);     // always below the 151-unit jump height
     game.genY += gap;
     const y = game.genY;
-    const w = rand(92 - 28 * d, 118 - 30 * d);
+    const w = rand(92 - 28 * d, 118 - 30 * d) * (hard ? 0.72 : 1);   // hard: narrower
     const x = rand(w / 2 + 8, VW - w / 2 - 8);
 
     // choose a type (fragile platforms never come twice in a row)
     let type = 'normal';
     if (m > 40) {
       const r = Math.random();
-      const pSpring = 0.07, pMove = 0.08 + 0.17 * d, pCrumb = 0.06 + 0.16 * d, pCloud = 0.04 + 0.08 * d;
+      const hk = hard ? 1.6 : 1;                     // hard: more moving / breakable
+      const pSpring = 0.07, pMove = (0.08 + 0.17 * d) * hk, pCrumb = (0.06 + 0.16 * d) * hk, pCloud = (0.04 + 0.08 * d) * hk;
       if (r < pSpring) type = 'spring';
       else if (r < pSpring + pMove) type = 'moving';
       else if (r < pSpring + pMove + pCrumb) type = game.lastFragile ? 'normal' : 'crumble';
@@ -785,7 +810,7 @@ function generate() {
     const pl = { type, x, y, w, h: 16, squash: 0, alpha: 1, bx: x, range: 0, speed: 0, phase: 0, broken: false, fallV: 0, dead: false };
     if (type === 'moving') {
       pl.range = Math.min(rand(50, 110), Math.min(x - w / 2, VW - x - w / 2));
-      pl.speed = rand(1.2, 2.2) + d; pl.phase = rand(0, TAU);
+      pl.speed = (rand(1.2, 2.2) + d) * (hard ? 1.4 : 1); pl.phase = rand(0, TAU);
     }
     game.plats.push(pl);
 
@@ -951,19 +976,20 @@ function update(dt) {
   }
 
   if (game.state === 'play') {
-    // camera follows upward only
+    // camera follows upward only; hard mode also scrolls up by itself (3→5.5 m/s)
+    if (hard) game.cam += (30 + 25 * clamp(game.maxY / 16000, 0, 1)) * dt;
     const target = p.y - VH * 0.5;
     if (target > game.cam) game.cam += (target - game.cam) * Math.min(1, 14 * dt);
     if (p.y > game.maxY) game.maxY = p.y;
     game.score = Math.floor(game.maxY / 10) + game.bonus;
     const z = zoneIndex(game.maxY / 10);
-    if (z !== game.zone) { game.zone = z; showBanner(ZONES[z]); SFX.zone(); }
+    if (z !== game.zone) { game.zone = z; zoneBanner(ZONES[z]); SFX.zone(); }
     generate(); cleanup();
     if (p.y + p.h / 2 < game.cam - 40) gameOver('fall');
     updateHud();
   } else if (game.state === 'over') {
     game.overTimer += dt;
-    if (!game.overShown && game.overTimer > 1.0) showOverScreen();
+    if (!game.overShown && game.overTimer > 2.2) showOverScreen();   // after the zone banner
   }
 
   // squash & stretch recovery
@@ -990,6 +1016,31 @@ function drawSky(mix) {
   const g = ctx.createLinearGradient(0, 0, 0, VH);
   g.addColorStop(0, rgbStr(top)); g.addColorStop(1, rgbStr(bot));
   ctx.fillStyle = g; ctx.fillRect(0, 0, VW, VH);
+}
+// Photo backdrop for the zone at metre height m. Returns false when nothing was drawn (image not loaded yet).
+function drawBackdrop(m) {
+  const z = zoneIndex(m);
+  if (z !== bgFx.to) { bgFx.from = bgFx.to; bgFx.to = z; bgFx.t = 0; }
+  const ready = i => ZONES[i].pic.complete && ZONES[i].pic.naturalWidth > 0;
+  if (!ready(bgFx.to)) return false;
+  const a = ready(bgFx.from) ? bgFx.from : bgFx.to;
+  if (a !== bgFx.to) drawCover(ZONES[a].pic, 1);
+  drawCover(ZONES[bgFx.to].pic, a === bgFx.to ? 1 : bgFx.t);
+  return true;
+}
+// cover-fit, 0.25x parallax with the camera, mirror-tiled vertically so the scroll never shows a seam
+function drawCover(img, alpha) {
+  const s = Math.max(VW / img.naturalWidth, VH / img.naturalHeight);
+  const dw = img.naturalWidth * s, dh = img.naturalHeight * s, x = (VW - dw) / 2;
+  const off = ((game.cam * 0.25) % (2 * dh) + 2 * dh) % (2 * dh);
+  ctx.save(); ctx.globalAlpha = alpha;
+  for (let k = -2; k <= 0; k++) {
+    const y = k * dh + off;
+    if (y >= VH || y + dh <= 0) continue;
+    if (k & 1) { ctx.save(); ctx.translate(0, y + dh); ctx.scale(1, -1); ctx.drawImage(img, x, 0, dw, dh); ctx.restore(); }
+    else ctx.drawImage(img, x, y, dw, dh);
+  }
+  ctx.restore();
 }
 // iterate decor items tiled along the parallax-scrolled layer
 function tiled(p, spacing, seed, fn) {
@@ -1293,8 +1344,8 @@ function render() {
   ctx.setTransform(scale, 0, 0, scale, 0, 0);
   const midM = (game.cam + VH * 0.5) / 10;
   const mix = zoneMix(midM);
-  drawSky(mix);
-  drawDecor(mix);
+  drawSky(mix);                                   // gradient: fallback + shows through until the photo loads
+  if (!drawBackdrop(midM)) drawDecor(mix);        // hand-drawn scenery only while the photo isn't ready
   if (game.state === 'menu') return;
 
   ctx.save();
@@ -1350,6 +1401,7 @@ function frame(now) {
   if (!last) { last = now; return; }
   let dt = (now - last) / 1000; last = now;
   if (dt > 0.05) dt = 0.05;                    // clamp after tab switches / hitches
+  if (bgFx.t < 1) bgFx.t = Math.min(1, bgFx.t + dt);   // backdrop cross-fade (~1s)
   if (game.state === 'play' || game.state === 'over') update(dt);
   else if (game.state === 'menu') {
     game.menuT += dt;
@@ -1360,6 +1412,22 @@ function frame(now) {
 }
 
 // ---------- Boot ----------
+if (window.Arcade) {
+  const paintPlayer = () => { $('startPlayer').textContent = Arcade.emoji() + ' ' + Arcade.profile(); };
+  paintPlayer();
+  document.querySelector('.topbar .home').after(Arcade.chip());
+  document.addEventListener('arcade:profile', () => {
+    paintPlayer();
+    // Not mid-run: reload so best, coins and suits reflect the new player.
+    if (game.state === 'menu' || game.state === 'over') { location.reload(); return; }
+    // Mid-run: re-read the new player's saves so this run is banked under their name.
+    best = Number(store.get('best', 0)) || 0; wallet = Number(store.get('coins', 0)) || 0;
+    owned = store.get('owned', ['classic']); if (!Array.isArray(owned) || !owned.includes('classic')) owned = ['classic'];
+    skinId = store.get('skin', 'classic'); if (!SKINS.some(s => s.id === skinId) || !owned.includes(skinId)) skinId = 'classic';
+    updateHud(); renderShop();
+  });
+  Arcade.require(GAME_ID);
+}
 updateToggles();
 updateHud();
 renderShop();

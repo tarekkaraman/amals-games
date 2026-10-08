@@ -6,6 +6,7 @@
 <meta name="theme-color" content="#0a0e2a">
 <meta name="description" content="Block Blitz — a fast, colourful falling-blocks puzzle game. Part of Amal's Games.">
 <title>Block Blitz</title>
+<script src="../shared/arcade.js"></script>
 <style>
 /* ============================================================
    Block Blitz — styles
@@ -26,16 +27,17 @@
 }
 *{box-sizing:border-box}
 html,body{margin:0;height:100%;overflow:hidden;background:var(--bg);color:var(--ink);font-family:var(--font);-webkit-text-size-adjust:100%}
-body{position:fixed;inset:0;overscroll-behavior:none;touch-action:manipulation;-webkit-tap-highlight-color:transparent;-webkit-font-smoothing:antialiased}
+/* Neon-arcade photo backdrop (art/bg.jpg, cover-fit); --bg colour shows until/unless it loads */
+body{position:fixed;inset:0;overscroll-behavior:none;touch-action:manipulation;-webkit-tap-highlight-color:transparent;-webkit-font-smoothing:antialiased;background:var(--bg) url(art/bg.jpg) center/cover no-repeat}
 
-/* Animated gradient backdrop + starfield canvas */
+/* Drifting glow layer (+ dark wash so the HUD reads over the photo) + starfield canvas */
 body::before{
   content:"";position:fixed;inset:-20%;z-index:0;pointer-events:none;
   background:
     radial-gradient(40% 35% at 20% 20%, rgba(124,92,255,.38), transparent 60%),
     radial-gradient(35% 35% at 80% 70%, rgba(34,211,238,.22), transparent 60%),
     radial-gradient(30% 30% at 62% 8%, rgba(244,63,94,.18), transparent 60%),
-    linear-gradient(160deg,#0c1138 0%,#0a0e2a 50%,#070a1f 100%);
+    linear-gradient(160deg,rgba(12,17,56,.45) 0%,rgba(10,14,42,.5) 50%,rgba(7,10,31,.6) 100%);
   animation:drift 40s ease-in-out infinite alternate;
 }
 @keyframes drift{from{transform:translate(0,0) rotate(0deg)}to{transform:translate(4%,3%) rotate(3deg)}}
@@ -48,6 +50,9 @@ body::before{
 .home{color:var(--ink);text-decoration:none;font-weight:700;background:rgba(255,255,255,.08);border:1px solid var(--line);padding:8px 12px;border-radius:999px;white-space:nowrap;font-size:14px;line-height:1.2;transition:background .15s,transform .15s}
 .home:hover{background:rgba(255,255,255,.15)}
 .home:active{transform:scale(.97)}
+.topbar .arc-chip{padding:7px 11px;font-size:13px;background:rgba(255,255,255,.08);border-color:var(--line)}
+.playing{color:var(--muted);font-size:14px;margin:-4px 0 12px}
+.playing b{color:#fff}
 .stats{display:flex;gap:6px;flex:1;justify-content:center;min-width:0}
 .stat{display:flex;flex-direction:column;align-items:center;min-width:66px;padding:4px 8px;border-radius:12px;background:rgba(255,255,255,.06);border:1px solid var(--line)}
 .stat .lbl{font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);font-weight:700}
@@ -77,7 +82,7 @@ button.icon:disabled{opacity:.4;cursor:default}
 .pbox{flex:1;min-height:0;min-width:0;display:flex;align-items:flex-start;justify-content:center}
 .pbox canvas{display:block}
 .board-wrap{grid-area:board;min-width:0;min-height:0;display:flex;align-items:center;justify-content:center}
-#board{display:block;border-radius:10px;background:#070a22;box-shadow:0 0 0 2px rgba(255,255,255,.1),0 24px 60px rgba(0,0,0,.55),0 0 48px rgba(124,92,255,.22);touch-action:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;cursor:pointer}
+#board{display:block;border-radius:10px;background:rgba(7,10,34,.35);box-shadow:0 0 0 2px rgba(255,255,255,.1),0 24px 60px rgba(0,0,0,.55),0 0 48px rgba(124,92,255,.22);touch-action:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;cursor:pointer}
 @media (max-width:900px){:root{--panel:96px}}
 /* Compact portrait phones: hold + next in a row above the board */
 @media (max-width:640px) and (orientation:portrait){
@@ -127,6 +132,8 @@ kbd{display:inline-block;min-width:20px;padding:1px 6px;border-radius:6px;backgr
 .touch .touchhint{color:#cfd6ff}
 .bestline{color:var(--muted);font-size:14px;margin-bottom:12px}
 .bestline b{color:var(--gold)}
+.hardbtn{width:100%;margin:0 0 10px}
+.hardbtn.on{background:rgba(255,92,138,.22);border-color:rgba(255,92,138,.6);color:#fff}
 .big{appearance:none;border:0;cursor:pointer;width:100%;padding:15px 20px;border-radius:16px;font-size:20px;font-weight:900;color:#fff;background:linear-gradient(135deg,#7c5cff,#5b3df5 60%,#22d3ee);box-shadow:0 12px 30px rgba(124,92,255,.45),inset 0 1px 0 rgba(255,255,255,.3);letter-spacing:.02em;transition:transform .12s,box-shadow .12s}
 .big:hover{transform:translateY(-1px);box-shadow:0 16px 36px rgba(124,92,255,.55)}
 .big:active{transform:scale(.98)}
@@ -197,6 +204,7 @@ kbd{display:inline-block;min-width:20px;padding:1px 6px;border-radius:6px;backgr
   <div class="card">
     <div class="logo" id="startTitle"><span class="l1">BLOCK</span><span class="l2">BLITZ</span></div>
     <p class="tag">Stack · Clear · Blitz</p>
+    <div class="playing">Playing as <b id="startPlayer">…</b></div>
     <div class="howto">
       <h3>How to play</h3>
       <ul>
@@ -216,6 +224,7 @@ kbd{display:inline-block;min-width:20px;padding:1px 6px;border-radius:6px;backgr
       <p class="touchhint">Touch: use the buttons under the board, or swipe the board to move, flick down to drop, tap to rotate.</p>
     </div>
     <div class="bestline">Best score: <b id="startBest">0</b></div>
+    <button class="btn hardbtn" id="btnHard" aria-pressed="false">🔥 Hard: OFF — start at level 5, speeds up faster</button>
     <button class="big" id="btnStart">▶ Play</button>
   </div>
 </div>
@@ -269,6 +278,8 @@ const DAS = 170, ARR = 45;     // auto-shift delay / repeat (ms)
 const SOFT_MS = 40;            // soft-drop row interval (ms)
 const CLEAR_MS = 360;          // line-clear animation length (ms)
 const LS = 'blockblitz-';      // localStorage key prefix
+const K = (k) => (window.Arcade ? Arcade.key(k) : k);   // per-player namespaced key
+const GAME_ID = 'block-blitz';
 const TYPES = ['I', 'O', 'T', 'S', 'Z', 'J', 'L'];
 
 const SHAPES = {
@@ -334,7 +345,7 @@ for (const t of TYPES) {
 const Sfx = (() => {
   let ac = null, master = null;
   let muted = false;
-  try { muted = localStorage.getItem(LS + 'muted') === '1'; } catch (e) { /* storage unavailable */ }
+  try { muted = localStorage.getItem(K(LS + 'muted')) === '1'; } catch (e) { /* storage unavailable */ }
 
   function ensure() {
     if (!ac) {
@@ -381,7 +392,7 @@ const Sfx = (() => {
     get muted() { return muted; },
     setMuted(m) {
       muted = m;
-      try { localStorage.setItem(LS + 'muted', m ? '1' : '0'); } catch (e) { /* ignore */ }
+      try { localStorage.setItem(K(LS + 'muted'), m ? '1' : '0'); } catch (e) { /* ignore */ }
     },
     move()   { tone({ f: 520, d: 0.035, type: 'square', v: 0.045 }); },
     rotate() { tone({ f: 620, f2: 880, d: 0.07, type: 'triangle', v: 0.08 }); },
@@ -419,23 +430,28 @@ const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matc
 const G = {
   state: 'start',            // start | playing | paused | over
   board: [], cur: null, holdType: null, holdUsed: false, queue: [], bag: [],
-  score: 0, lines: 0, level: 1, best: 0, startBest: 0, combo: -1,
+  score: 0, lines: 0, level: 1, startLevel: 1, best: 0, startBest: 0, combo: -1,
   gravAcc: 0, lockTimer: 0, lockResets: 0, lowestY: 0,
   softDrop: false, moveDir: 0, dasTimer: 0, dasCharged: false, leftHeld: false, rightHeld: false,
   clearing: false, clearRows: [], clearSet: null, clearT: 0,
   flash: 0, shake: 0, overT: 0,
   floats: [], particles: [],
 };
-try { G.best = parseInt(localStorage.getItem(LS + 'best') || '0', 10) || 0; } catch (e) { /* ignore */ }
+function loadBest() {
+  try { G.best = parseInt(localStorage.getItem(K(LS + 'best')) || '0', 10) || 0; } catch (e) { G.best = 0; }
+}
+loadBest();
 
 let cell = 24, pc = 16, dpr = 1, compact = false;
 const spriteCache = new Map();
 const fmt = (n) => n.toLocaleString('en-US');
-const gravityMs = (level) => Math.max(70, Math.round(900 * Math.pow(0.84, level - 1)));
+let hard = false;                              // K('blockblitz-hard'): start at level 5, max speed by ~level 11 instead of ~15
+try { hard = localStorage.getItem(K(LS + 'hard')) === '1'; } catch (e) { /* storage unavailable */ }
+const gravityMs = (level) => Math.max(70, Math.round(900 * Math.pow(hard ? 0.78 : 0.84, level - 1)));
 const emptyRow = () => Array(COLS).fill(null);
 
 function saveBest() {
-  try { localStorage.setItem(LS + 'best', String(G.best)); } catch (e) { /* ignore */ }
+  try { localStorage.setItem(K(LS + 'best'), String(G.best)); } catch (e) { /* ignore */ }
 }
 
 /* ---------- Board helpers ---------- */
@@ -541,7 +557,7 @@ function startClear(rows) {
   if (bonus) { addFloat(`COMBO ×${G.combo + 1}  +${fmt(bonus)}`, cx, cy + cell * 1.9, '#ff9ecb', cell * 0.8, 160); Sfx.combo(G.combo); }
   Sfx.clear(n);
   spawnParticles(rows);
-  const newLevel = Math.floor(G.lines / 10) + 1;
+  const newLevel = Math.floor(G.lines / 10) + G.startLevel;
   if (newLevel > G.level) {
     G.level = newLevel;
     addFloat(`LEVEL ${G.level}!`, cx, cell * 4, '#c4b5fd', cell * 1.3, 450);
@@ -589,7 +605,7 @@ function popEl(el) {
 function resetGame() {
   G.board = Array.from({ length: TOTAL }, emptyRow);
   G.cur = null; G.holdType = null; G.holdUsed = false; G.queue = []; G.bag = [];
-  G.score = 0; G.lines = 0; G.level = 1; G.combo = -1;
+  G.score = 0; G.lines = 0; G.level = G.startLevel = hard ? 5 : 1; G.combo = -1;
   G.gravAcc = 0; G.lockTimer = 0; G.lockResets = 0; G.lowestY = 0;
   G.softDrop = false; G.moveDir = 0; G.dasTimer = 0; G.dasCharged = false; G.leftHeld = false; G.rightHeld = false;
   G.clearing = false; G.clearRows = []; G.clearSet = null; G.clearT = 0;
@@ -651,6 +667,10 @@ function gameOver() {
   $('ovLines').textContent = fmt(G.lines);
   $('ovLevel').textContent = String(G.level);
   $('newBest').classList.toggle('show', G.score > G.startBest && G.score > 0);
+  if (window.Arcade) {
+    Arcade.record(GAME_ID, G.score, { lines: G.lines, level: G.level });
+    if (!overScreen.querySelector('.arc-rate')) $('btnAgain').before(Arcade.ratingWidget(GAME_ID));
+  }
   overScreen.classList.add('show');
   setPauseButton();
   Sfx.over();
@@ -805,9 +825,9 @@ function render() {
     const a = G.shake * 3;
     ctx.translate((Math.random() - 0.5) * a, (Math.random() - 0.5) * a);
   }
-  // Board background + grid
+  // Board background + grid (semi-opaque so the arcade photo shows through; blocks stay readable)
   const bg = ctx.createLinearGradient(0, 0, 0, H);
-  bg.addColorStop(0, 'rgba(12,16,46,0.94)'); bg.addColorStop(1, 'rgba(6,8,26,0.97)');
+  bg.addColorStop(0, 'rgba(12,16,46,0.6)'); bg.addColorStop(1, 'rgba(6,8,26,0.72)');
   ctx.fillStyle = bg; ctx.fillRect(-4, -4, W + 8, H + 8);
   ctx.strokeStyle = 'rgba(255,255,255,0.05)'; ctx.lineWidth = 1; ctx.beginPath();
   for (let x = 1; x < COLS; x++) { ctx.moveTo(x * cell + 0.5, 0); ctx.lineTo(x * cell + 0.5, H); }
@@ -1092,6 +1112,17 @@ function syncMute() {
   btnMute.title = Sfx.muted ? 'Unmute' : 'Mute';
 }
 btnMute.addEventListener('click', () => { Sfx.setMuted(!Sfx.muted); Sfx.ensure(); syncMute(); if (!Sfx.muted) Sfx.rotate(); });
+const btnHard = $('btnHard');
+function syncHard() {
+  btnHard.textContent = `🔥 Hard: ${hard ? 'ON' : 'OFF'} — start at level 5, speeds up faster`;
+  btnHard.classList.toggle('on', hard);
+  btnHard.setAttribute('aria-pressed', String(hard));
+}
+btnHard.addEventListener('click', () => {
+  hard = !hard;
+  try { localStorage.setItem(K(LS + 'hard'), hard ? '1' : '0'); } catch (e) { /* ignore */ }
+  syncHard(); Sfx.ensure(); Sfx.rotate();
+});
 /* Blur buttons after click so Space/Enter never re-trigger them mid-game */
 document.addEventListener('click', (e) => { const b = e.target.closest('button'); if (b) b.blur(); });
 document.addEventListener('touchstart', markTouch, { passive: true, once: true });
@@ -1111,8 +1142,23 @@ function frame(now) {
   requestAnimationFrame(frame);
 }
 
+/* ---------- Arcade (player profiles) ---------- */
+if (window.Arcade) {
+  const paintPlayer = () => { $('startPlayer').textContent = Arcade.emoji() + ' ' + Arcade.profile(); };
+  paintPlayer();
+  document.querySelector('.topbar .home').after(Arcade.chip());
+  document.addEventListener('arcade:profile', () => {
+    paintPlayer();
+    // On the start/over screens, reload so best score + saves reflect the new player.
+    if (G.state === 'start' || G.state === 'over') { location.reload(); return; }
+    loadBest();
+  });
+  Arcade.require(GAME_ID);
+}
+
 /* ---------- Boot ---------- */
 syncMute();
+syncHard();
 setPauseButton();
 resize();
 G.board = Array.from({ length: TOTAL }, emptyRow);

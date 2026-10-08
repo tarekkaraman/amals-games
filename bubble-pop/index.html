@@ -6,6 +6,7 @@
 <meta name="theme-color" content="#0b2238">
 <meta name="description" content="Bubble Pop — aim, shoot and pop matching bubbles. Part of Amal's Games.">
 <title>Bubble Pop · Amal's Games</title>
+<script src="../shared/arcade.js"></script>
 <style>
   /* ------------------------------------------------------------------
      Bubble Pop — layout & chrome. All game graphics live on <canvas>.
@@ -72,6 +73,9 @@
   }
   .home:hover { background: var(--glass-strong); }
   .home:active { transform: scale(0.97); }
+  .topbar .arc-chip { padding: 6px 10px; font-size: 13px; background: var(--glass); border-color: var(--line); }
+  .playing { color: var(--muted); font-size: 14px; margin: -8px 0 14px; }
+  .playing b { color: var(--ink); }
 
   .stats {
     display: flex;
@@ -225,6 +229,7 @@
     margin-bottom: 10px;
     animation: pulse 1.4s ease-in-out infinite;
   }
+  .badge[hidden] { display: none; }   /* "New best!" only when it really is one */
   @keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.06); } }
   .btns { display: flex; flex-direction: column; gap: 10px; }
   .btn {
@@ -289,6 +294,7 @@
     <div class="panel">
       <h1>Bubble Pop</h1>
       <p class="sub">Aim. Shoot. Match 3 to pop.</p>
+      <p class="playing">Playing as <b id="startPlayer">…</b></p>
       <ul class="howto">
         <li><span class="ic">🎯</span><span>Move your mouse or drag your finger to aim. Click, tap or press <b>Space</b> to shoot.</span></li>
         <li><span class="ic">💥</span><span>Match <b>3 or more</b> of the same colour to pop them. Bubbles left hanging fall for bonus points.</span></li>
@@ -362,6 +368,8 @@ const MAX_ROWS = 12;                     // rows allowed above the danger line
 const SQ3 = Math.sqrt(3);
 const MAX_AIM = 80 * Math.PI / 180;      // aim limited to ±80° from straight up
 const LS = 'bubblepop-';                 // localStorage prefix
+const K = (k) => (window.Arcade ? Arcade.key(k) : k);   // per-player namespaced key
+const GAME_ID = 'bubble-pop';
 const COLORS = [
   { base: '#ff4d6d', dark: '#9e0f33', light: '#ffc2cf', sym: 'tri' },
   { base: '#ff9f1c', dark: '#a65300', light: '#ffe0b0', sym: 'sq' },
@@ -373,19 +381,26 @@ const COLORS = [
   { base: '#22d3ee', dark: '#076f82', light: '#c0f3fb', sym: 'x' },
 ];
 
-/** Difficulty curve per level. */
+const bgImg = new Image();               // underwater grotto backdrop; gradient shows until it loads
+bgImg.src = 'art/bg.jpg';
+
+/** Difficulty curve per level. Levels 10–12 are 🔥 (all colours, lower ceiling, faster drop); 13+ repeat 12. */
+const HARD_FROM = 10;
 function levelConfig(level) {
+  const h = Math.min(3, Math.max(0, level - HARD_FROM + 1));          // 0 = normal, 1..3 = 🔥 tier
   return {
-    colors: Math.min(COLORS.length, 4 + Math.floor((level - 1) / 2)),  // 4,4,5,5,6,6,7,7,8…
-    shotsPerRow: Math.max(4, 8 - Math.ceil(level / 2)),                 // 7,7,6,6,5,5,4…
-    startRows: 5 + Math.min(2, Math.floor((level - 1) / 3)),            // 5,5,5,6,6,6,7…
+    colors: h ? COLORS.length : Math.min(COLORS.length, 4 + Math.floor((level - 1) / 2)),  // 4,4,5,5,6,6,7,7,8…
+    shotsPerRow: h ? [3, 3, 2][h - 1] : Math.max(4, 8 - Math.ceil(level / 2)),             // 7,7,6,6,5,5,4… 🔥 3,3,2
+    startRows: h ? 6 + h : 5 + Math.min(2, Math.floor((level - 1) / 3)),                   // 5,5,5,6,6,6,7… 🔥 7,8,9
+    hard: h,
   };
 }
+const levelLabel = (level) => (levelConfig(level).hard ? '🔥' : '') + level;
 
 // ---------------------------------------------------------------- storage
 const store = {
-  get(k, d) { try { const v = localStorage.getItem(LS + k); return v === null ? d : JSON.parse(v); } catch (e) { return d; } },
-  set(k, v) { try { localStorage.setItem(LS + k, JSON.stringify(v)); } catch (e) { /* private mode etc. */ } },
+  get(k, d) { try { const v = localStorage.getItem(K(LS + k)); return v === null ? d : JSON.parse(v); } catch (e) { return d; } },
+  set(k, v) { try { localStorage.setItem(K(LS + k), JSON.stringify(v)); } catch (e) { /* private mode etc. */ } },
 };
 
 // ---------------------------------------------------------------- audio (Web Audio synthesis only)
@@ -490,12 +505,12 @@ const G = {
   shotsSinceRow: 0, combo: 0,
   pushAnim: 0,                 // 1 → 0 while a new row slides in
   recoil: 0, swapAnim: 0,      // small shooter animations
-  pendingClear: false, overTimer: 0, scoreWasBest: false,
+  pendingClear: false, overTimer: 0, clearTimer: 0, scoreWasBest: false,
   time: 0,
   keys: new Set(),
 };
 // Effects
-const FX = { pops: [], falls: [], texts: [], parts: [], confetti: [], trail: [] };
+const FX = { pops: [], falls: [], texts: [], parts: [], confetti: [], trail: [], ripples: [] };
 // Layout (CSS pixels)
 const L = { W: 0, H: 0, R: 20, rowH: 0, left: 0, top: 0, boardW: 0, dangerY: 0, shooterX: 0, shooterY: 0, nextX: 0, nextY: 0, swapX: 0 };
 let dpr = 1;
@@ -768,7 +783,7 @@ function startLevel() {
   G.pushAnim = 0;
   G.pendingClear = false;
   G.aim = 0;
-  FX.pops.length = FX.falls.length = FX.texts.length = FX.parts.length = FX.trail.length = 0;
+  FX.pops.length = FX.falls.length = FX.texts.length = FX.parts.length = FX.trail.length = FX.ripples.length = 0;
   for (let r = 0; r < G.cfg.startRows; r++) {
     ensureRow(r);
     for (let c = 0; c < colsIn(r); c++) G.grid[r][c] = { color: randOf(palette()), wob: 0 };
@@ -911,6 +926,11 @@ function showGameOver() {
   el.overBest.textContent = G.best.toLocaleString();
   el.overLevel.textContent = G.level;
   el.overNew.hidden = !isNew;
+  if (window.Arcade) {
+    Arcade.record(GAME_ID, G.score, { level: G.level });
+    const panel = el.ovOver.querySelector('.panel');
+    if (!panel.querySelector('.arc-rate')) panel.querySelector('.btns').before(Arcade.ratingWidget(GAME_ID));
+  }
   show(el.ovOver);
 }
 
@@ -919,11 +939,13 @@ function levelComplete() {
   const bonus = 100 * G.level;
   addScore(bonus);
   const nextCfg = levelConfig(G.level + 1);
-  el.lvlTitle.textContent = 'Level ' + G.level + ' cleared!';
+  el.lvlTitle.textContent = 'Level ' + levelLabel(G.level) + ' cleared!';
   el.lvlScore.textContent = G.score.toLocaleString();
   el.lvlBonus.textContent = '+' + bonus;
-  el.lvlNextInfo.textContent = nextCfg.colors + ' colours · row every ' + nextCfg.shotsPerRow + ' shots';
+  el.lvlNextInfo.textContent = (nextCfg.hard ? '🔥 ' : '') + nextCfg.colors + ' colours · row every ' + nextCfg.shotsPerRow + ' shots';
   spawnConfetti();
+  FX.ripples.push({ x: L.left + L.boardW / 2, y: L.top + (L.dangerY - L.top) / 2, t: 0 });
+  G.clearTimer = 1.0;                      // "Level clear!" ripple plays, then the next-level panel appears
   Sound.levelUp();
   setState('levelcomplete');
 }
@@ -999,6 +1021,11 @@ function updateFX(dt) {
     c.x += (c.vx + Math.sin(c.wob) * 40) * dt; c.y += c.vy * dt; c.rot += c.vr * dt;
     if (c.y > L.H + 30) FX.confetti.splice(i, 1);
   }
+  // level-clear ripple
+  for (let i = FX.ripples.length - 1; i >= 0; i--) {
+    FX.ripples[i].t += dt;
+    if (FX.ripples[i].t > 1.3) FX.ripples.splice(i, 1);
+  }
   // wobble decay on grid bubbles
   forEachBubble((r, c, b) => { if (b.wob > 0) b.wob = Math.max(0, b.wob - dt * 2.2); });
   if (G.pushAnim > 0) G.pushAnim = Math.max(0, G.pushAnim - dt * 4);
@@ -1026,6 +1053,7 @@ function frame(now) {
     if (G.overTimer > 0) { G.overTimer -= dt; if (G.overTimer <= 0) showGameOver(); }
   } else if (G.state === 'levelcomplete' || G.state === 'start') {
     updateFX(dt);
+    if (G.clearTimer > 0) { G.clearTimer -= dt; if (G.clearTimer <= 0) show(el.ovLevel); }
   }
   render();
   requestAnimationFrame(frame);
@@ -1059,6 +1087,14 @@ function render() {
   bg.addColorStop(1, '#1b1f5a');
   ctx.fillStyle = bg;
   ctx.fillRect(0, 0, W, H);
+  // photo backdrop (cover-fit) + 15% dark wash so bubbles stay readable; gradient above is the fallback
+  if (bgImg.naturalWidth) {
+    const s = Math.max(W / bgImg.naturalWidth, H / bgImg.naturalHeight);
+    const dw = bgImg.naturalWidth * s, dh = bgImg.naturalHeight * s;
+    ctx.drawImage(bgImg, (W - dw) / 2, (H - dh) / 2, dw, dh);
+    ctx.fillStyle = 'rgba(0,0,0,0.15)';
+    ctx.fillRect(0, 0, W, H);
+  }
   // soft drifting orbs (gentle, no strobing)
   for (let i = 0; i < 6; i++) {
     const t = G.time * 0.12 + i * 1.7;
@@ -1183,6 +1219,27 @@ function render() {
     ctx.fillRect(-c.w / 2, -c.h / 2, c.w, c.h * (0.4 + 0.6 * Math.abs(Math.cos(c.wob))));
     ctx.restore();
   }
+  // "Level clear!" ripple: three expanding rings + popping label
+  for (const r of FX.ripples) {
+    const k = Math.min(1, r.t / 1.1);
+    ctx.save();
+    ctx.strokeStyle = '#ffffff';
+    for (let i = 0; i < 3; i++) {
+      const kk = Math.max(0, k - i * 0.12);
+      ctx.globalAlpha = (1 - kk) * 0.8;
+      ctx.lineWidth = 2 + R * 0.3 * (1 - kk);
+      ctx.beginPath(); ctx.arc(r.x, r.y, kk * L.boardW * 0.75, 0, Math.PI * 2); ctx.stroke();
+    }
+    ctx.globalAlpha = k < 0.75 ? 1 : 1 - (k - 0.75) / 0.25;
+    const sc = 0.6 + 0.4 * easeOut(Math.min(1, r.t / 0.35));
+    ctx.translate(r.x, r.y); ctx.scale(sc, sc);
+    ctx.font = '900 ' + Math.max(18, R * 1.6) + 'px ' + fontStack();
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.lineWidth = 6; ctx.lineJoin = 'round'; ctx.strokeStyle = 'rgba(0,0,0,0.5)';
+    ctx.strokeText('Level clear!', 0, 0);
+    ctx.fillStyle = '#ffd60a'; ctx.fillText('Level clear!', 0, 0);
+    ctx.restore();
+  }
 }
 
 function fontStack() { return '-apple-system, BlinkMacSystemFont, "SF Pro Rounded", "Segoe UI", Roboto, system-ui, sans-serif'; }
@@ -1288,11 +1345,11 @@ function setState(s) {
   el.pause.setAttribute('aria-label', s === 'paused' ? 'Resume' : 'Pause');
   if (s === 'start') { el.startBest.textContent = G.best.toLocaleString(); el.startLevel.textContent = G.bestLevel; show(el.ovStart); }
   if (s === 'paused') show(el.ovPause);
-  if (s === 'levelcomplete') show(el.ovLevel);
+  if (s === 'levelcomplete' && G.clearTimer <= 0) show(el.ovLevel);   // else the frame loop shows it after the ripple
 }
 function updateHUD() {
   el.score.textContent = G.score.toLocaleString();
-  el.level.textContent = G.level;
+  el.level.textContent = levelLabel(G.level);
   el.best.textContent = G.best.toLocaleString();
 }
 function togglePause() {
@@ -1365,7 +1422,7 @@ window.addEventListener('keydown', (e) => {
     e.preventDefault();
     if (!e.repeat) {
       if (G.state === 'start') { Sound.unlock(); newGame(); }
-      else if (G.state === 'levelcomplete') { G.level++; startLevel(); }
+      else if (G.state === 'levelcomplete') { if (el.ovLevel.classList.contains('show')) { G.level++; startLevel(); } }
       else if (G.state === 'gameover') { if (el.ovOver.classList.contains('show')) newGame(); }
       else shoot();
     }
@@ -1397,6 +1454,18 @@ window.addEventListener('orientationchange', () => setTimeout(layout, 120));
 (function boot() {
   Sound.muted = !!store.get('muted', false);
   el.mute.textContent = Sound.muted ? '🔇' : '🔊';
+  if (window.Arcade) {
+    const paintPlayer = () => { $('startPlayer').textContent = Arcade.emoji() + ' ' + Arcade.profile(); };
+    paintPlayer();
+    document.querySelector('.topbar .home').after(Arcade.chip());
+    document.addEventListener('arcade:profile', () => {
+      paintPlayer();
+      // On the start / game-over screens reload so saves reflect the new player.
+      if (G.state === 'start' || G.state === 'gameover') { location.reload(); return; }
+      G.best = store.get('best', 0); G.bestLevel = store.get('level', 1); updateHUD();
+    });
+    Arcade.require(GAME_ID);
+  }
   layout();
   updateHUD();
   setState('start');
