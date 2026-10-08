@@ -48,6 +48,14 @@ body::before{
   animation:drift 46s ease-in-out infinite alternate;
 }
 @keyframes drift{from{transform:translate3d(0,0,0) scale(1)}to{transform:translate3d(-3%,2%,0) scale(1.06)}}
+/* Theme photo (art/<theme>.jpg) over the gradient, with a ~32% dark wash so the grid stays readable */
+body::after{
+  content:"";position:fixed;inset:0;z-index:0;pointer-events:none;
+  background-image:linear-gradient(rgba(5,7,24,.32),rgba(5,7,24,.32)),var(--theme-bg);
+  background-size:cover;background-position:center;background-repeat:no-repeat;
+  opacity:0;transition:opacity .5s ease
+}
+body.themed::after{opacity:1}
 
 button{font:inherit;color:inherit;cursor:pointer;border:0;background:none;-webkit-tap-highlight-color:transparent}
 button:focus-visible{outline:3px solid var(--cyan);outline-offset:2px}
@@ -195,14 +203,15 @@ body:not(.kb) .card.kfocus::before{display:none}
 .sect h3 .n{display:inline-grid;place-items:center;width:20px;height:20px;border-radius:50%;background:var(--violet);color:#fff;font-size:.72rem;letter-spacing:0}
 .themes{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
 .theme{
-  display:flex;flex-direction:column;align-items:center;gap:4px;padding:10px 6px;border-radius:16px;
-  background:rgba(255,255,255,.06);border:2px solid var(--line);transition:transform .12s ease,border-color .15s
+  display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:4px;min-height:96px;padding:10px 6px;border-radius:16px;
+  background:rgba(255,255,255,.06);border:2px solid var(--line);transition:transform .12s ease,border-color .15s;
+  background-size:cover;background-position:center;text-shadow:0 1px 4px rgba(0,0,0,.7)
 }
 .theme:hover{transform:translateY(-2px)}
 .theme .em{font-size:1.35rem;letter-spacing:-.08em;font-family:var(--emoji);line-height:1.2;white-space:nowrap}
 .theme .nm{font-size:.8rem;font-weight:900}
 .theme .st{font-size:.68rem;color:var(--gold);font-weight:800}
-.theme.sel{border-color:var(--cyan);background:rgba(34,211,238,.14);box-shadow:0 0 0 3px rgba(34,211,238,.2)}
+.theme.sel{border-color:var(--cyan);background-color:rgba(34,211,238,.14);box-shadow:0 0 0 3px rgba(34,211,238,.2)}
 .levels{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
 .lvl{
   position:relative;display:flex;flex-direction:column;align-items:center;gap:2px;padding:10px 4px 8px;border-radius:16px;
@@ -316,7 +325,7 @@ body:not(.kb) .card.kfocus::before{display:none}
 <section id="start" class="screen">
   <div class="panel" style="width:min(100%,620px)">
     <h1>Memory Match</h1>
-    <p class="sub">Flip, remember, match. Clear every level and collect all the stars.</p>
+    <p class="sub">Flip, remember, match — six worlds to master!</p>
     <p class="playing">Playing as <b id="startPlayer">…</b></p>
 
     <div class="sect">
@@ -406,6 +415,18 @@ body:not(.kb) .card.kfocus::before{display:none}
       <li>⌨️ Keyboard: <kbd>←</kbd><kbd>↑</kbd><kbd>→</kbd><kbd>↓</kbd> move, <kbd>Enter</kbd>/<kbd>Space</kbd> flip, <kbd>P</kbd>/<kbd>Esc</kbd> pause.</li>
     </ul>
     <div class="row"><button class="btn primary" id="btnHowClose">Got it</button></div>
+  </div>
+</div>
+
+<!-- ============ Theme complete (last level of a theme) ============ -->
+<div id="ovTheme" class="overlay hidden">
+  <div class="panel">
+    <h2>Theme complete! 🏆</h2>
+    <p class="sub" id="themeMsg"></p>
+    <div class="row">
+      <button class="btn primary" id="btnNextTheme">Next theme ▶</button>
+      <button class="btn" id="btnThemeLevels">Levels</button>
+    </div>
   </div>
 </div>
 
@@ -649,9 +670,10 @@ function startLevel(themeId, level) {
   $('start').classList.add('hidden');
   hideOverlays();
 
-  // theme colours for the card backs
+  // theme colours for the card backs + theme photo behind the board
   const root = document.documentElement.style;
   root.setProperty('--c1', G.theme.c1); root.setProperty('--c2', G.theme.c2);
+  setThemeBg(G.theme.id);
 
   // deal: pick N emoji, duplicate, shuffle
   const pick = shuffleArr(G.theme.emoji.slice()).slice(0, G.def.pairs);
@@ -792,6 +814,13 @@ function showWin(secs) {
   $('ovWin').classList.remove('hidden');
   $('btnNext').classList.contains('hidden') ? $('btnReplay').focus() : $('btnNext').focus();
   audio.win(); confetti.burst(stars === 3 ? 160 : 90);
+  if (G.level >= LEVELS.length) later(showThemeDone, 1600);   // after the star animation
+}
+function showThemeDone() {
+  const t = G.theme;
+  $('themeMsg').textContent = G.mode === 2 ? `All ${LEVELS.length} ${t.name} levels played!` : `${t.name}: ${totalStars(t.id)} / ${LEVELS.length * 3} stars`;
+  $('ovTheme').classList.remove('hidden'); $('btnNextTheme').focus();
+  audio.win(); confetti.burst(140);
 }
 function showP2Result() {
   const [a, b] = G.scores;
@@ -808,6 +837,7 @@ function showP2Result() {
   }
   $('ovP2').classList.remove('hidden'); $('btnRematch').focus();
   audio.win(); confetti.burst(120);
+  if (G.level >= LEVELS.length) later(showThemeDone, 1600);
 }
 
 /* ---------------- Pause ---------------- */
@@ -823,7 +853,11 @@ function resume() {
   if (G.started && !G.over) startTimer();
   audio.unlock();
 }
-function hideOverlays() { ['ovPause', 'ovWin', 'ovP2', 'ovHow'].forEach(id => $(id).classList.add('hidden')); }
+function hideOverlays() { ['ovPause', 'ovWin', 'ovP2', 'ovHow', 'ovTheme'].forEach(id => $(id).classList.add('hidden')); }
+function setThemeBg(id) {
+  document.documentElement.style.setProperty('--theme-bg', `url("art/${id}.jpg")`);
+  document.body.classList.add('themed');
+}
 
 /* ---------------- Start screen ---------------- */
 function goHome() {
@@ -844,9 +878,11 @@ function renderStart() {
     b.className = 'theme' + (t.id === selTheme ? ' sel' : ''); b.type = 'button';
     b.setAttribute('aria-pressed', t.id === selTheme ? 'true' : 'false');
     b.innerHTML = `<span class="em">${t.emoji.slice(0, 4).join('')}</span><span class="nm">${t.name}</span><span class="st">★ ${totalStars(t.id)}/${LEVELS.length * 3}</span>`;
+    b.style.backgroundImage = `linear-gradient(rgba(10,13,40,.2),rgba(10,13,40,.8)),url("art/${t.id}.jpg")`;
     b.addEventListener('click', () => { selTheme = t.id; store.set('theme', selTheme); audio.unlock(); audio.tick(); renderStart(); });
     th.appendChild(b);
   });
+  setThemeBg(selTheme);
   // mode toggle
   $('mode1').classList.toggle('on', mode === 1); $('mode1').setAttribute('aria-pressed', mode === 1);
   $('mode2').classList.toggle('on', mode === 2); $('mode2').setAttribute('aria-pressed', mode === 2);
@@ -907,6 +943,12 @@ $('btnRematch').addEventListener('click', () => startLevel(G.theme.id, G.level))
 $('btnP2Next').addEventListener('click', () => startLevel(G.theme.id, Math.min(LEVELS.length, G.level + 1)));
 $('btnP2Levels').addEventListener('click', goHome);
 $('btnP2Home').addEventListener('click', goHome);
+$('btnNextTheme').addEventListener('click', () => {
+  const i = THEMES.findIndex(t => t.id === G.theme.id);
+  selTheme = THEMES[(i + 1) % THEMES.length].id; store.set('theme', selTheme);
+  audio.unlock(); audio.tick(); startLevel(selTheme, 1);
+});
+$('btnThemeLevels').addEventListener('click', goHome);
 $('mode1').addEventListener('click', () => { mode = 1; store.set('mode', 1); audio.unlock(); audio.tick(); renderStart(); });
 $('mode2').addEventListener('click', () => { mode = 2; store.set('mode', 2); audio.unlock(); audio.tick(); renderStart(); });
 $('btnHow').addEventListener('click', () => { $('ovHow').classList.remove('hidden'); $('btnHowClose').focus(); });
